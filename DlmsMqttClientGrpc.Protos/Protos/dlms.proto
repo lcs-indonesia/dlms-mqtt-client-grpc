@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option csharp_namespace = "DlmsMqttClientGrpc";
+
+package dlms;
+
+service DlmsProto{
+	rpc ConnectAndRead(ConnectAndReadRequest) returns (ConnectAndReadReply);
+}
+
+message ConnectAndReadRequest{
+	string sessionId = 1;
+	repeated string args = 2;
+}
+
+message ConnectAndReadReply{
+	string value = 1;
+}
