@@ -988,8 +988,9 @@ public class GXDLMSReader
             {
                 Client.Objects.Save(outputFile, new GXXmlWriterSettings() { Values = false });
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                Console.WriteLine(e.Message);
                 //It's OK if this fails.
                 return false;
             }

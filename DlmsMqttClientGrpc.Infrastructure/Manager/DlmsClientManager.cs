@@ -86,7 +86,9 @@ public class DlmsClientManager : IDlmsClientManager
     }
     private bool HandleClearCacheArgs(List<string> args, string? path)
     {
-        if (!args.Remove("--clear-cache") || string.IsNullOrEmpty(path) || !File.Exists(path)) return false;
+        var isClearCacheExists = args.Remove("--clear-cache");
+
+        if (!isClearCacheExists || string.IsNullOrEmpty(path) || !File.Exists(path)) return isClearCacheExists;
 
         File.Delete(path);
         return true;
