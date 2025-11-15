@@ -1,0 +1,16 @@
+name: Build image
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  build:
+    uses: lcs-indonesia/shared-ci/.github/workflows/deploy.yml@main
+    with:
+      environment: staging
+      image_name: dlms-mqtt-client-grpc
+      image_tag: ${{ github.ref_name }}
+      working_directory: .
+    secrets: inherit
