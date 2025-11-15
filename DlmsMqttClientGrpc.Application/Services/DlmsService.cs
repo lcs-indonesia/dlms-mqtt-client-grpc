@@ -13,10 +13,10 @@ public class DlmsService(
     public override Task<ConnectAndReadReply> ConnectAndRead(ConnectAndReadRequest request, ServerCallContext context)
     {
         var dict = new Dictionary<string, IEnumerable<object>>();
-        var args = request.Args.ToArray();
+        var args = request.Args.ToList();
         var client = dlmsClientManager.GetConnection(request.SessionId, args);
 
-        var reads = args[Array.IndexOf(args, "-g") + 1].Split(";");
+        var reads = args[args.IndexOf("-g") + 1].Split(";");
 
         foreach (var read in reads)
         {

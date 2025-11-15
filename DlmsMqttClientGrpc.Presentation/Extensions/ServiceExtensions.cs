@@ -1,5 +1,4 @@
 ﻿using DlmsMqttClientGrpc.Application.Interfaces;
-using DlmsMqttClientGrpc.Application.Services;
 using DlmsMqttClientGrpc.Infrastructure.Manager;
 
 namespace DlmsMqttClientGrpc.Presentation.Extensions;
@@ -28,7 +27,7 @@ public static class ServiceExtensions
 
     private static void Services(this IServiceCollection services)
     {
-        services.AddSingleton<DlmsService>();
+        //services.AddSingleton<DlmsService>();
     }
     private static void Workers(this IServiceCollection services)
     {
