@@ -1,5 +1,6 @@
 using DlmsMqttClientGrpc.Application.Services;
 using DlmsMqttClientGrpc.Presentation.Extensions;
+using DlmsMqttClientGrpc.Presentation.Interceptors;
 using DlmsMqttClientGrpc.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,7 +10,10 @@ builder.AddSettings();
 builder.AddServices();
 
 builder.Services.AddLogging();
-builder.Services.AddGrpc();
+builder.Services.AddGrpc(o =>
+{
+    o.Interceptors.Add<GrpcCatchExceptionInterceptor>();
+});
 
 var app = builder.Build();
 

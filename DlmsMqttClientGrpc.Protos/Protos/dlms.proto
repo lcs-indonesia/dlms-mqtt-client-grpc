@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "google/protobuf/struct.proto";
+
 option csharp_namespace = "DlmsMqttClientGrpc";
 
 package dlms;
@@ -14,5 +16,5 @@ message ConnectAndReadRequest{
 }
 
 message ConnectAndReadReply{
-	string value = 1;
+	google.protobuf.Struct value = 1;
 }
