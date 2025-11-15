@@ -14,6 +14,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install registry CA certificate
+        run: |
+          echo "${{ secrets.REGISTRY_CA_CERT_BASE64 }}" | base64 -d | sudo tee /usr/local/share/ca-certificates/registry.crt > /dev/null
+          sudo update-ca-certificates
+
+      - name: Verify CA cert installed
+        run: ls -l /usr/local/share/ca-certificates
+
       - name: Login to self-hosted registry
         uses: docker/login-action@v3
         with:
