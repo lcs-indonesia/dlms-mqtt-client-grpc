@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using DlmsMqttClientGrpc.Application.Extensions;
 using DlmsMqttClientGrpc.Application.Interfaces;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
@@ -19,6 +20,7 @@ public class DlmsService(
 
         foreach (var read in reads)
         {
+            if (dict.ContainsKey(read)) continue;
             logger.LogDebug("Reading object {0}...", read);
             var part = read.Split(":");
             var values = client.ReadObject([new(part[0], int.Parse(part[1]))]);
@@ -26,9 +28,10 @@ public class DlmsService(
         }
         var data = JsonSerializer.Serialize(dict, new JsonSerializerOptions { WriteIndented = true });
         logger.LogDebug("Reply data: {data}", data);
+        var proto = data.ToProtoStruct();
         return Task.FromResult<ConnectAndReadReply>(new()
         {
-            Value = data,
+            Value = proto
         });
     }
 }
