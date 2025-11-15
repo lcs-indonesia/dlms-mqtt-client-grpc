@@ -114,7 +114,7 @@ public class DLMSClient : IDisposable, IDlmsClient
 
         if (settings.media is GXNet net && settings.client.InterfaceType == InterfaceType.CoAP)
         {
-            //Update token ID.
+            //Update token ID.  
             settings.client.Coap.Token = 0x45;
             settings.client.Coap.Host = net.HostName;
             settings.client.Coap.MessageId = 1;

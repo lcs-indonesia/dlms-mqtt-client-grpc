@@ -1,4 +1,5 @@
-﻿using Grpc.Core;
+﻿using System.ComponentModel;
+using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Gurux.DLMS;
 
@@ -17,6 +18,10 @@ public class GrpcCatchExceptionInterceptor(
         catch (GXDLMSException gxe)
         {
             throw new RpcException(new(StatusCode.Unknown, gxe.Message, gxe));
+        }
+        catch (InvalidEnumArgumentException iae)
+        {
+            throw new RpcException(new(StatusCode.InvalidArgument, iae.Message));
         }
         catch (Exception e)
         {

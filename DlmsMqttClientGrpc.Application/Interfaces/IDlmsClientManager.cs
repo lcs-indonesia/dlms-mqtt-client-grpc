@@ -2,5 +2,5 @@
 
 public interface IDlmsClientManager
 {
-    IDlmsClient GetConnection(string sessionId, string[] args);
+    IDlmsClient GetConnection(string sessionId, List<string> args);
 }

@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.ComponentModel;
+using System.Text.Json;
 using DLMS.Client;
 using DLMS.Client.GXMedia.Mqtt;
 using DlmsMqttClientGrpc.Application.Interfaces;
@@ -11,9 +12,9 @@ namespace DlmsMqttClientGrpc.Infrastructure.Manager;
 
 public class DlmsClientManager : IDlmsClientManager
 {
+    private readonly IOptions<AppSettings> appSettings;
     private readonly MemoryCache dlmsClientCache;
     private readonly GXMqtt gxMqtt;
-    private readonly IOptions<AppSettings> appSettings;
     private readonly ILogger logger;
 
     public DlmsClientManager(
@@ -42,14 +43,17 @@ public class DlmsClientManager : IDlmsClientManager
         this.appSettings = appSettings;
         this.logger = logger;
     }
-    public IDlmsClient GetConnection(string sessionId, string[] args)
+    public IDlmsClient GetConnection(string sessionId, List<string> args)
     {
         logger.LogDebug("Get or Create dlms client connection.");
-        if (!dlmsClientCache.TryGetValue(sessionId, out DLMSClient? client))
+
+        var filePath = AddCustomCacheFolder(args, appSettings.Value.DlmsCacheFolderPath);
+        var clearResult = HandleClearCacheArgs(args, filePath);
+        if (!dlmsClientCache.TryGetValue(sessionId, out DLMSClient? client) || clearResult)
         {
             logger.LogDebug("Creating dlms client connection...");
             var settings = new Settings { media = gxMqtt };
-            client = new DLMSClient(args, settings);
+            client = new DLMSClient([.. args], settings);
             logger.LogDebug("Dlms client connected");
 
             logger.LogDebug("Adding new dlms client to session...");
@@ -65,5 +69,26 @@ public class DlmsClientManager : IDlmsClientManager
 
         if (client == null) throw new Exception("Dlms Client is null.");
         return client;
+    }
+    private string? AddCustomCacheFolder(List<string> args, string cacheFolderPath)
+    {
+        var index = args.IndexOf("-o");
+        if (index == -1) return null;
+        if (index + 1 >= args.Count)
+            throw new InvalidEnumArgumentException("No value after argument '-o'.");
+
+        var folder = Path.GetFullPath(cacheFolderPath);
+        if (!Directory.Exists(folder)) Directory.CreateDirectory(folder);
+
+        var result = Path.Combine(folder, args[index + 1]);
+        args[index + 1] = result;
+        return result;
+    }
+    private bool HandleClearCacheArgs(List<string> args, string? path)
+    {
+        if (!args.Remove("--clear-cache") || string.IsNullOrEmpty(path) || !File.Exists(path)) return false;
+
+        File.Delete(path);
+        return true;
     }
 }
