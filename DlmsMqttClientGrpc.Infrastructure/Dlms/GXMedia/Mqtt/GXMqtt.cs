@@ -109,6 +109,8 @@ public class GXMqtt : IGXMedia2
 
     static readonly MqttFactory factory = new MqttFactory();
     IMqttClient mqttClient;
+    private readonly MqttClientOptions options;
+
     string IGXMedia.Name => "MQTT";
 
     /// <summary>
@@ -143,6 +145,14 @@ public class GXMqtt : IGXMedia2
     {
         syncBase = new GXSynchronousMediaBase(1024);
         ConfigurableSettings = AvailableMediaSettings.All;
+    }
+    public GXMqtt(IMqttClient mqttClient)
+    {
+        syncBase = new GXSynchronousMediaBase(1024);
+        ConfigurableSettings = AvailableMediaSettings.All;
+        this.mqttClient = mqttClient;
+        this.options = mqttClient.Options;
+        ClientId = mqttClient.Options.ClientId;
     }
 
     string IGXMedia.Settings
@@ -395,6 +405,7 @@ public class GXMqtt : IGXMedia2
         {
             if (userClientId != value)
             {
+                clientId = value;
                 userClientId = value;
                 NotifyPropertyChanged("ClientId");
             }
@@ -724,14 +735,14 @@ event ClientDisconnectedEventHandler IGXMedia.OnClientDisconnected
     public void Open()
     {
         Close();
-        mqttClient = factory.CreateMqttClient();
-        if (string.IsNullOrEmpty(userClientId)) clientId = Guid.NewGuid().ToString();
-        else clientId = userClientId;
-        var builder = new MqttClientOptionsBuilder()
-        .WithTcpServer(serverAddress, port).WithClientId(clientId);
-        if (!string.IsNullOrEmpty(Username) && !string.IsNullOrEmpty(Password))
-            builder.WithCredentials(Username, Password);
-        var options = builder.Build();
+        //mqttClient = factory.CreateMqttClient();
+        //if (string.IsNullOrEmpty(userClientId)) clientId = Guid.NewGuid().ToString();
+        //else clientId = userClientId;
+        //var builder = new MqttClientOptionsBuilder()
+        //.WithTcpServer(serverAddress, port).WithClientId(clientId);
+        //if (!string.IsNullOrEmpty(Username) && !string.IsNullOrEmpty(Password))
+        //builder.WithCredentials(Username, Password);
+        //var options = builder.Build();
 
         mqttClient.ApplicationMessageReceivedAsync += async t =>
         {
@@ -863,7 +874,7 @@ event ClientDisconnectedEventHandler IGXMedia.OnClientDisconnected
     {
         get;
         set;
-    }
+    } = 3;
 
     /// <inheritdoc />
     public EventWaitHandle AsyncWaitHandle

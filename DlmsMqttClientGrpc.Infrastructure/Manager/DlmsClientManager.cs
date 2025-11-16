@@ -1,74 +1,95 @@
-﻿using System.ComponentModel;
-using System.Text.Json;
+﻿using System.Collections.Concurrent;
+using System.ComponentModel;
+using System.Threading.Channels;
 using DLMS.Client;
 using DLMS.Client.GXMedia.Mqtt;
 using DlmsMqttClientGrpc.Application.Interfaces;
 using DlmsMqttClientGrpc.Application.Settings;
-using Microsoft.Extensions.Caching.Memory;
+using DlmsMqttClientGrpc.Infrastructure.Caching;
+using Gurux.Common;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using MQTTnet.Client;
 
 namespace DlmsMqttClientGrpc.Infrastructure.Manager;
 
 public class DlmsClientManager : IDlmsClientManager
 {
     private readonly IOptions<AppSettings> appSettings;
-    private readonly MemoryCache dlmsClientCache;
-    private readonly GXMqtt gxMqtt;
+    private readonly ConcurrentDictionary<string, SlidingItem<IDlmsClient>> dlmsClientCache = new();
     private readonly ILogger logger;
-
+    private readonly IOptions<MqttSettings> mqttSettings;
+    private readonly ConcurrentDictionary<string, Channel<MqttApplicationMessageReceivedEventArgs>> sessionChannels = [];
+    private bool isConnected = false;
+    private IMqttClient mqttClient;
     public DlmsClientManager(
+        IMqttClient mqttClient,
         IOptions<AppSettings> appSettings,
         IOptions<MqttSettings> mqttSettings,
         ILogger<DlmsClientManager> logger)
     {
-        dlmsClientCache = new MemoryCache(new MemoryCacheOptions
-        {
-            SizeLimit = appSettings.Value.DlmscClientChacheLimit,
-        });
-        logger.LogInformation("Creating base GxMqtt");
-        gxMqtt = new()
-        {
-            Port = mqttSettings.Value.Port,
-            ServerAddress = mqttSettings.Value.Host,
-            ClientId = Guid.NewGuid().ToString(),
-            Username = mqttSettings.Value.Username,
-            Password = mqttSettings.Value.Password,
-        };
-        logger.LogInformation("GxMqtt created with config: {val}", JsonSerializer.Serialize(
-            mqttSettings.Value, new JsonSerializerOptions
-            {
-                WriteIndented = true
-            }));
         this.appSettings = appSettings;
+        this.mqttSettings = mqttSettings;
         this.logger = logger;
+
+        mqttClient.ApplicationMessageReceivedAsync += async e =>
+        {
+            var channel = sessionChannels.GetValueOrDefault(e.ApplicationMessage.Topic);
+            if (channel != null) await channel.Writer.WriteAsync(e);
+        };
+        this.mqttClient = mqttClient;
     }
-    public IDlmsClient GetConnection(string sessionId, List<string> args)
+    /// <summary>
+    /// Only allow one proccess per topic. <br/>
+    /// Use <see cref="ISlidingItem{T}.BeginRead"/> to prevent cache cleanup while using Item
+    /// </summary>
+    /// <param name="topic"></param>
+    /// <param name="args"></param>
+    /// <returns/>
+    /// <exception cref="OperationCanceledException"></exception>
+    /// <exception cref="Exception"></exception>
+    public ISlidingItem<IDlmsClient> GetConnection(string topic, List<string> args)
     {
         logger.LogDebug("Get or Create dlms client connection.");
 
         var filePath = AddCustomCacheFolder(args, appSettings.Value.DlmsCacheFolderPath);
         var clearResult = HandleClearCacheArgs(args, filePath);
-        if (!dlmsClientCache.TryGetValue(sessionId, out DLMSClient? client) || clearResult)
+
+        var cache = dlmsClientCache.GetValueOrDefault(topic);
+        if (cache != null && cache.GetTotalReader() > 0)
+            throw new OperationCanceledException("There is reader on topic: " + topic);
+
+        if (clearResult)
+        {
+            dlmsClientCache.TryRemove(topic, out cache);
+            cache?.Dispose();
+            cache = null;
+        }
+        if (cache == null)
         {
             logger.LogDebug("Creating dlms client connection...");
+
+            var gxMqtt = CreateGxMqtt(topic);
             var settings = new Settings { media = gxMqtt };
-            client = new DLMSClient([.. args], settings);
+            var client = new DLMSClient([.. args], settings);
             logger.LogDebug("Dlms client connected");
 
             logger.LogDebug("Adding new dlms client to session...");
-            dlmsClientCache.Set(sessionId, client, new MemoryCacheEntryOptions
-            {
-                SlidingExpiration = appSettings.Value.DlmsClientCacheExpiration,
-                Size = 1,
 
+            cache = new SlidingItem<IDlmsClient>(topic, client,
+                appSettings.Value.DlmsClientCacheExpiration, OnCacheExpiration);
+            dlmsClientCache.AddOrUpdate(topic, cache, (_, old) =>
+            {
+                old.Dispose();
+                return cache;
             });
             logger.LogDebug("Session added with expiration: {seconds}s",
                 appSettings.Value.DlmsClientCacheExpiration.TotalSeconds);
         }
 
-        if (client == null) throw new Exception("Dlms Client is null.");
-        return client;
+        if (cache == null) throw new Exception("Dlms Client is null.");
+        cache.Refresh();
+        return cache;
     }
     private string? AddCustomCacheFolder(List<string> args, string cacheFolderPath)
     {
@@ -84,6 +105,26 @@ public class DlmsClientManager : IDlmsClientManager
         args[index + 1] = result;
         return result;
     }
+
+    /// <summary>
+    /// Create mqtt client session per topic
+    /// </summary>
+    /// <param name="topic"></param>
+    /// <returns></returns>
+    private IGXMedia CreateGxMqtt(string topic)
+    {
+        logger.LogDebug("Creating new mqtt session...");
+        var session = new MqttClientSession(mqttClient, mqttSettings.Value, logger);
+        sessionChannels.AddOrUpdate(topic, (_) => session.channel, (_, _) => session.channel);
+        sessionChannels.AddOrUpdate(session.Options.ClientId, (_) => session.channel, (_, _) => session.channel);
+        logger.LogDebug("Mqtt session created.");
+
+        logger.LogDebug("Creating gxMqtt client");
+        var client = new GXMqtt(session);
+        logger.LogDebug("GxMqtt created.");
+        return client;
+    }
+
     private bool HandleClearCacheArgs(List<string> args, string? path)
     {
         var isClearCacheExists = args.Remove("--clear-cache");
@@ -92,5 +133,12 @@ public class DlmsClientManager : IDlmsClientManager
 
         File.Delete(path);
         return true;
+    }
+
+    private void OnCacheExpiration(string key)
+    {
+        logger.LogDebug("Cache expired, cleaning session...");
+        if (dlmsClientCache.TryRemove(key, out var client)) client.Value.Dispose();
+        sessionChannels.TryRemove(key, out _);
     }
 }

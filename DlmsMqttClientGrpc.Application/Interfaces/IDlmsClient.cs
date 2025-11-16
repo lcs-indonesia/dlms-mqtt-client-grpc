@@ -1,7 +1,7 @@
 ﻿
 namespace DlmsMqttClientGrpc.Application.Interfaces;
 
-public interface IDlmsClient
+public interface IDlmsClient : IDisposable
 {
     IEnumerable<object> ReadObject(List<KeyValuePair<string, int>> readObjects);
 }
