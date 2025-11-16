@@ -2,5 +2,5 @@
 
 public interface IDlmsClientManager
 {
-    IDlmsClient GetConnection(string sessionId, List<string> args);
+    ISlidingItem<IDlmsClient> GetConnection(string topic, List<string> args);
 }

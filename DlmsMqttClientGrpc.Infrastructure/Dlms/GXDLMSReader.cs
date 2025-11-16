@@ -1811,13 +1811,14 @@ public class GXDLMSReader
         {
             Console.WriteLine(line);
         }
-        using (FileStream fs = File.Open("trace.txt", FileMode.Append))
-        {
-            using (TextWriter writer = new StreamWriter(fs))
-            {
-                writer.WriteLine(line);
-            }
-        }
+
+        //using (FileStream fs = File.Open("trace.txt", FileMode.Append))
+        //{
+        //    using (TextWriter writer = new StreamWriter(fs))
+        //    {
+        //        writer.WriteLine(line);
+        //    }
+        //}
     }
 
     /// <summary>
