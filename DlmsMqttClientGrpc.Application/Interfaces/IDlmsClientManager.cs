@@ -2,5 +2,5 @@
 
 public interface IDlmsClientManager
 {
-    ISlidingItem<IDlmsClient> GetConnection(string topic, List<string> args);
+    ISlidingItem<IDlmsClient> GetConnection(string topic, List<string> args, bool isClearCache);
 }

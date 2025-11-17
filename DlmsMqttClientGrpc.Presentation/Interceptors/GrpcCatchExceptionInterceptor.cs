@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using DlmsMqttClientGrpc.Application.Exceptions;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Gurux.DLMS;
@@ -22,6 +23,10 @@ public class GrpcCatchExceptionInterceptor(
         catch (InvalidEnumArgumentException iae)
         {
             throw new RpcException(new(StatusCode.InvalidArgument, iae.Message));
+        }
+        catch (StatusCodeException se)
+        {
+            throw new RpcException(new(StatusCode.Unknown, se.Message + "@" + se.StatusCode));
         }
         catch (Exception e)
         {

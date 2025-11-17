@@ -32,6 +32,7 @@
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
 //---------------------------------------------------------------------------
 using DLMS.Client.GXMedia.Mqtt;
+using DlmsMqttClientGrpc.Application.DTOs.Dlms;
 using DlmsMqttClientGrpc.Application.Interfaces;
 using Gurux.DLMS.Enums;
 using Gurux.DLMS.Objects;
@@ -166,13 +167,29 @@ public class DLMSClient : IDisposable, IDlmsClient
         }
 
     }
-    public IEnumerable<object> ReadObject(List<KeyValuePair<string, int>> readObjects)
+    public IEnumerable<object> ReadObject(List<KeyValuePair<string, int>> readObjects, DlmsReadObjectFilterDto filter)
     {
 
         if (!isInitialized)
         {
             reader.InitializeConnection();
-            if (!isAssociationViewReaded) reader.GetAssociationView(settings.outputFile);
+            if (!isAssociationViewReaded && reader.GetAssociationView(settings.outputFile))
+            {
+                reader.GetProfileGenericColumns();
+                reader.GetScalersAndUnits();
+                if (settings.outputFile != null)
+                {
+                    try
+                    {
+                        settings.client.Objects.Save(settings.outputFile, new GXXmlWriterSettings() { UseMeterTime = true, IgnoreDefaultValues = false });
+                    }
+                    catch (Exception)
+                    {
+                        //It's OK if this fails.
+                    }
+                }
+            }
+
             isInitialized = true;
         }
 
@@ -181,7 +198,37 @@ public class DLMSClient : IDisposable, IDlmsClient
         {
             foreach (KeyValuePair<string, int> it in readObjects)
             {
-                object val = reader.Read(settings.client.Objects.FindByLN(ObjectType.None, it.Key), it.Value);
+                var gxObject = settings.client.Objects.FindByLN(ObjectType.None, it.Key);
+
+                if (gxObject is GXDLMSProfileGeneric gxpg)
+                {
+                    if (it.Value == 2)
+                    {
+                        reader.GetProfileGeneric(gxpg, filter);
+                        foreach (var buf in gxpg.Buffer)
+                        {
+                            var result = new Dictionary<string, object>();
+                            for (var i = 0; i < buf.Length; i++)
+                                result.Add(gxpg.CaptureObjects[i].Key.Description, buf[i]);
+                            yield return result;
+                        }
+                        continue;
+                    }
+                    if (it.Value == 3)
+                    {
+                        foreach (var pair in gxpg.CaptureObjects) yield return pair.Key.Description;
+                        continue;
+                    }
+                }
+
+                object val = reader.Read(gxObject, it.Value);
+
+                if (val is GXDLMSClock gclk)
+                {
+                    yield return gclk.Time;
+                    continue;
+                }
+
                 yield return val;
             }
             if (settings.outputFile != null)

@@ -1182,7 +1182,26 @@ public class GXDLMSReader
             Console.WriteLine("Index: " + pos + " Value: " + val);
         }
     }
+    public void GetProfileGeneric(GXDLMSProfileGeneric it, DlmsMqttClientGrpc.Application.DTOs.Dlms.DlmsReadObjectFilterDto filter)
+    {
+        uint? entriesInUse = Client.CanRead(it, 7) ? Convert.ToUInt32(Read(it, 7)) : null;
+        if (entriesInUse == 0 || it.CaptureObjects.Count == 0) return;
 
+        if (filter.From != null || filter.To != null)
+        {
+            ReadRowsByRange(it, filter.From ?? DateTime.UtcNow.AddDays(-1), filter.To ?? DateTime.UtcNow);
+            return;
+        }
+
+        if (entriesInUse != null)
+        {
+            if (filter.Take < 1) filter.Take = 1;
+            if (filter.Skip > entriesInUse) filter.Skip = entriesInUse.Value;
+            if (filter.Skip + filter.Take - 1 > entriesInUse) filter.Take = entriesInUse - filter.Skip + 1;
+        }
+
+        ReadRowsByEntry(it, filter.Skip ?? 1, filter.Take ?? 1);
+    }
     public void GetProfileGenerics()
     {
         //Find profile generics objects and read them.
@@ -1288,7 +1307,6 @@ public class GXDLMSReader
             }
         }
     }
-
     /// <summary>
     /// Show compact data.
     /// </summary>

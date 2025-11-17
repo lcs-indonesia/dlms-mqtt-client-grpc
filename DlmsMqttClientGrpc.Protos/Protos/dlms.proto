@@ -1,6 +1,8 @@
 syntax = "proto3";
 
 import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
 
 option csharp_namespace = "DlmsMqttClientGrpc";
 
@@ -10,9 +12,16 @@ service DlmsProto{
 	rpc ConnectAndRead(ConnectAndReadRequest) returns (ConnectAndReadReply);
 }
 
+message CustomReadArguments{
+	google.protobuf.BoolValue isClearCache = 1;
+	google.protobuf.UInt32Value skip = 2;
+	google.protobuf.UInt32Value take = 3;
+	google.protobuf.Timestamp from = 4;
+	google.protobuf.Timestamp to = 5;
+}
 message ConnectAndReadRequest{
-	string sessionId = 1;
-	repeated string args = 2;
+	repeated string args = 1;
+	CustomReadArguments customArgs = 2;
 }
 
 message ConnectAndReadReply{
