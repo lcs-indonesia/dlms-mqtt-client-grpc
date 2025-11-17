@@ -48,19 +48,19 @@ public class DlmsClientManager : IDlmsClientManager
     /// <returns/>
     /// <exception cref="OperationCanceledException"></exception>
     /// <exception cref="Exception"></exception>
-    public ISlidingItem<IDlmsClient> GetConnection(string topic, List<string> args)
+    public ISlidingItem<IDlmsClient> GetConnection(string topic, List<string> args, bool isClearCache)
     {
         logger.LogDebug("Get or Create dlms client connection.");
 
         var filePath = AddCustomCacheFolder(args, appSettings.Value.DlmsCacheFolderPath);
-        var clearResult = HandleClearCacheArgs(args, filePath);
 
         var cache = dlmsClientCache.GetValueOrDefault(topic);
         if (cache != null && cache.GetTotalReader() > 0)
             throw new OperationCanceledException("There is reader on topic: " + topic);
 
-        if (clearResult)
+        if (isClearCache)
         {
+            if (File.Exists(filePath)) File.Delete(filePath);
             dlmsClientCache.TryRemove(topic, out cache);
             cache?.Dispose();
             cache = null;
@@ -123,16 +123,6 @@ public class DlmsClientManager : IDlmsClientManager
         var client = new GXMqtt(session);
         logger.LogDebug("GxMqtt created.");
         return client;
-    }
-
-    private bool HandleClearCacheArgs(List<string> args, string? path)
-    {
-        var isClearCacheExists = args.Remove("--clear-cache");
-
-        if (!isClearCacheExists || string.IsNullOrEmpty(path) || !File.Exists(path)) return isClearCacheExists;
-
-        File.Delete(path);
-        return true;
     }
 
     private void OnCacheExpiration(string key)
