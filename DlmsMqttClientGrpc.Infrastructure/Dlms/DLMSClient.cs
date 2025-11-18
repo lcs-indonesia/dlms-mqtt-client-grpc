@@ -169,7 +169,52 @@ public class DLMSClient : IDisposable, IDlmsClient
     }
     public IEnumerable<object> ReadObject(List<KeyValuePair<string, int>> readObjects, DlmsReadObjectFilterDto filter)
     {
+        InitializeConnection();
 
+        //if (settings.readObjects.Count != 0)
+        if (readObjects.Count != 0)
+        {
+            foreach (KeyValuePair<string, int> it in readObjects)
+            {
+                var value = InternalReadObject(it, filter);
+                if (value != null) yield return value;
+            }
+            if (settings.outputFile != null)
+            {
+                try
+                {
+                    settings.client.Objects.Save(settings.outputFile, new GXXmlWriterSettings() { UseMeterTime = true, IgnoreDefaultValues = false });
+                }
+                catch (Exception)
+                {
+                    //It's OK if this fails.
+                }
+            }
+        }
+    }
+
+    public object ReadObject(KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter)
+    {
+        InitializeConnection();
+
+        var result = InternalReadObject(it, filter);
+
+        if (settings.outputFile != null)
+        {
+            try
+            {
+                settings.client.Objects.Save(settings.outputFile, new GXXmlWriterSettings() { UseMeterTime = true, IgnoreDefaultValues = false });
+            }
+            catch (Exception)
+            {
+                //It's OK if this fails.
+            }
+        }
+        return result;
+    }
+
+    private void InitializeConnection()
+    {
         if (!isInitialized)
         {
             reader.InitializeConnection();
@@ -189,59 +234,43 @@ public class DLMSClient : IDisposable, IDlmsClient
                     }
                 }
             }
-
             isInitialized = true;
         }
+    }
+    private object InternalReadObject(KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter)
+    {
+        var gxObject = settings.client.Objects.FindByLN(ObjectType.None, it.Key);
 
-        //if (settings.readObjects.Count != 0)
-        if (readObjects.Count != 0)
+        if (gxObject is GXDLMSProfileGeneric gxpg)
         {
-            foreach (KeyValuePair<string, int> it in readObjects)
+            if (it.Value == 2)
             {
-                var gxObject = settings.client.Objects.FindByLN(ObjectType.None, it.Key);
+                reader.GetProfileGeneric(gxpg, filter);
 
-                if (gxObject is GXDLMSProfileGeneric gxpg)
+                var result = gxpg.CaptureObjects.Select((p, index) => new
                 {
-                    if (it.Value == 2)
-                    {
-                        reader.GetProfileGeneric(gxpg, filter);
-                        foreach (var buf in gxpg.Buffer)
-                        {
-                            var result = new Dictionary<string, object>();
-                            for (var i = 0; i < buf.Length; i++)
-                                result.Add(gxpg.CaptureObjects[i].Key.Description, buf[i]);
-                            yield return result;
-                        }
-                        continue;
-                    }
-                    if (it.Value == 3)
-                    {
-                        foreach (var pair in gxpg.CaptureObjects) yield return pair.Key.Description;
-                        continue;
-                    }
-                }
-
-                object val = reader.Read(gxObject, it.Value);
-
-                if (val is GXDLMSClock gclk)
-                {
-                    yield return gclk.Time;
-                    continue;
-                }
-
-                yield return val;
+                    p.Key.Description,
+                    values = gxpg.Buffer.Select(buff => buff[index]).ToList()
+                }).ToDictionary(p => p.Description, p => p.values);
+                return result;
             }
-            if (settings.outputFile != null)
+            if (it.Value == 3)
             {
-                try
+                var result = new Dictionary<string, object>
                 {
-                    settings.client.Objects.Save(settings.outputFile, new GXXmlWriterSettings() { UseMeterTime = true, IgnoreDefaultValues = false });
-                }
-                catch (Exception)
-                {
-                    //It's OK if this fails.
-                }
+                    ["value"] = gxpg.CaptureObjects.Select(p => p.Key.Description)
+                };
+                return result;
             }
         }
+
+        object val = reader.Read(gxObject, it.Value);
+
+        if (val is GXDLMSClock gclk)
+        {
+            return gclk.Time;
+        }
+
+        return val;
     }
 }

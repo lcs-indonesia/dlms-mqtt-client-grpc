@@ -13,7 +13,7 @@ public class DlmsService(
 {
     public override Task<ConnectAndReadReply> ConnectAndRead(ConnectAndReadRequest request, ServerCallContext context)
     {
-        var dict = new Dictionary<string, IEnumerable<object>>();
+        var dict = new Dictionary<string, object>();
         var args = request.Args.ToList();
         if (!TryGetTopic(args, out var topic) || topic == null)
             throw new ArgumentNullException("Topic is null in args[].");
@@ -37,14 +37,14 @@ public class DlmsService(
                 if (dict.ContainsKey(read)) continue;
                 logger.LogDebug("Reading object {0}...", read);
                 var part = read.Split(":");
-                var values = client.ReadObject([new(part[0], int.Parse(part[1]))], new()
+                var value = client.ReadObject(new KeyValuePair<string, int>(part[0], int.Parse(part[1])), new()
                 {
                     Skip = request.CustomArgs.Skip,
                     Take = request.CustomArgs.Take,
                     From = request.CustomArgs.From?.ToDateTime(),
                     To = request.CustomArgs.To?.ToDateTime(),
                 });
-                dict.Add(read, values);
+                dict.Add(read, value);
             }
         }
         catch (Exception e)

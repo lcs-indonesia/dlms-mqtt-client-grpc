@@ -19,4 +19,8 @@
     <ProjectReference Include="..\DlmsMqttClientGrpc.Protos\DlmsMqttClientGrpc.Protos.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Cache\" />
+  </ItemGroup>
+
 </Project>
