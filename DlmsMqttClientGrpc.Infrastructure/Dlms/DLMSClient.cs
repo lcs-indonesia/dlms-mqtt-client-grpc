@@ -169,7 +169,7 @@ public class DLMSClient : IDisposable, IDlmsClient
     }
     public IEnumerable<object> ReadObject(List<KeyValuePair<string, int>> readObjects, DlmsReadObjectFilterDto filter)
     {
-        InitializeConnection();
+        InitializeConnection(filter.SkipGettingAssociationView);
 
         //if (settings.readObjects.Count != 0)
         if (readObjects.Count != 0)
@@ -195,7 +195,7 @@ public class DLMSClient : IDisposable, IDlmsClient
 
     public object ReadObject(KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter)
     {
-        InitializeConnection();
+        InitializeConnection(filter.SkipGettingAssociationView);
 
         var result = InternalReadObject(it, filter);
 
@@ -213,12 +213,12 @@ public class DLMSClient : IDisposable, IDlmsClient
         return result;
     }
 
-    private void InitializeConnection()
+    private void InitializeConnection(bool skipGettingAssociationView)
     {
         if (!isInitialized)
         {
             reader.InitializeConnection();
-            if (!isAssociationViewReaded && reader.GetAssociationView(settings.outputFile))
+            if (!skipGettingAssociationView && !isAssociationViewReaded && reader.GetAssociationView(settings.outputFile))
             {
                 reader.GetProfileGenericColumns();
                 reader.GetScalersAndUnits();
@@ -239,7 +239,8 @@ public class DLMSClient : IDisposable, IDlmsClient
     }
     private object InternalReadObject(KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter)
     {
-        var gxObject = settings.client.Objects.FindByLN(ObjectType.None, it.Key);
+        var gxObject = settings.client.Objects.FindByLN(ObjectType.None, it.Key) ??
+            new GXDLMSObject { LogicalName = it.Key };
 
         if (gxObject is GXDLMSProfileGeneric gxpg)
         {
@@ -264,7 +265,7 @@ public class DLMSClient : IDisposable, IDlmsClient
             }
         }
 
-        object val = reader.Read(gxObject, it.Value);
+        object val = reader.Read(gxObject, it.Value, filter.SkipGettingAssociationView);
 
         if (val is GXDLMSClock gclk)
         {

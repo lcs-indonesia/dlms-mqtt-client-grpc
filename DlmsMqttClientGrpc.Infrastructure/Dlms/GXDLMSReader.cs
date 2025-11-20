@@ -1606,7 +1606,7 @@ public class GXDLMSReader
     /// <param name="it">COSEM object to read.</param>
     /// <param name="attributeIndex">Attribute index.</param>
     /// <returns>Read value.</returns>
-    public object Read(GXDLMSObject it, int attributeIndex)
+    public object Read(GXDLMSObject it, int attributeIndex, bool skipGettingAssociationView = false)
     {
         if (Client.CanRead(it, attributeIndex))
         {
@@ -1629,6 +1629,7 @@ public class GXDLMSReader
             {
                 it.SetDataType(attributeIndex, reply.DataType);
             }
+            if (skipGettingAssociationView) return reply.Value;
             return Client.UpdateValue(it, attributeIndex, reply.Value);
         }
         else
