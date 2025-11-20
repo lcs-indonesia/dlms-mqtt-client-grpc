@@ -6,5 +6,6 @@ public class DlmsReadObjectFilterDto
     public uint? Take { get; set; }
     public DateTime? From { get; set; }
     public DateTime? To { get; set; }
+    public bool SkipGettingAssociationView { get; set; } = false;
 
 }

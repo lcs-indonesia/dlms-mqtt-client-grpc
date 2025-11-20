@@ -43,6 +43,7 @@ public class DlmsService(
                     Take = request.CustomArgs.Take,
                     From = request.CustomArgs.From?.ToDateTime(),
                     To = request.CustomArgs.To?.ToDateTime(),
+                    SkipGettingAssociationView = request.CustomArgs.SkipGettingAssociationView ?? false,
                 });
                 dict.Add(read, value);
             }

@@ -18,14 +18,17 @@ public class GrpcCatchExceptionInterceptor(
         }
         catch (GXDLMSException gxe)
         {
+            logger.LogError(gxe, "Error occured.");
             throw new RpcException(new(StatusCode.Unknown, gxe.Message, gxe));
         }
         catch (InvalidEnumArgumentException iae)
         {
+            logger.LogError(iae, "Error occured.");
             throw new RpcException(new(StatusCode.InvalidArgument, iae.Message));
         }
         catch (StatusCodeException se)
         {
+            logger.LogError(se, "Error occured.");
             throw new RpcException(new(StatusCode.Unknown, se.Message + "@" + se.StatusCode));
         }
         catch (Exception e)
