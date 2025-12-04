@@ -10,6 +10,7 @@ package dlms;
 
 service DlmsProto{
 	rpc ConnectAndRead(ConnectAndReadRequest) returns (ConnectAndReadReply);
+	rpc ConnectAndReadProfileGeneric(ConnectAndReadRequest) returns (ProfileGenericReply);
 }
 
 message CustomReadArguments{
@@ -27,4 +28,16 @@ message ConnectAndReadRequest{
 
 message ConnectAndReadReply{
 	google.protobuf.Struct value = 1;
+}
+
+message ProfileGenericReply{
+	repeated google.protobuf.Timestamp times = 1;
+	map<string, DoubleList> number_values = 2;
+	map<string, StringList> string_values = 3;
+}
+message DoubleList{
+	repeated double values = 1;
+}
+message StringList{
+	repeated string values = 1;
 }
