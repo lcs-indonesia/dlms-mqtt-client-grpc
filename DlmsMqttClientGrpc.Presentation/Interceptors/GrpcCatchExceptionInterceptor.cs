@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using DlmsMqttClientGrpc.Application.Exceptions;
+using DlmsMqttClientGrpc.Presentation.Extensions;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Gurux.DLMS;
@@ -34,7 +35,8 @@ public class GrpcCatchExceptionInterceptor(
         catch (Exception e)
         {
             logger.LogError(e, "Unhandled gRPC error");
-            throw new RpcException(new(StatusCode.Internal, "Internal server error."));
+            var msg = LogExtensions.IsDebug ? e.Message : "Internal server Error";
+            throw new RpcException(new(StatusCode.Internal, msg));
         }
     }
 }

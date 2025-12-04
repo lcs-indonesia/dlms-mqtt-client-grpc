@@ -6,11 +6,13 @@ namespace DlmsMqttClientGrpc.Presentation.Extensions;
 
 public static class LogExtensions
 {
+    public static bool IsDebug = false;
     public static void AddLogger(this IHostApplicationBuilder builder)
     {
         Env.Load();
         var logMinLevel = Env.GetString("LOG_MIN_LEVEL", nameof(LogEventLevel.Information));
         var level = (LogEventLevel)Enum.Parse(typeof(LogEventLevel), logMinLevel);
+        IsDebug = level < LogEventLevel.Information;
 
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Is(level)
