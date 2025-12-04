@@ -31,9 +31,12 @@
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
 //---------------------------------------------------------------------------
+using System.Runtime.InteropServices;
 using DLMS.Client.GXMedia.Mqtt;
 using DlmsMqttClientGrpc.Application.DTOs.Dlms;
+using DlmsMqttClientGrpc.Application.Exceptions;
 using DlmsMqttClientGrpc.Application.Interfaces;
+using Gurux.DLMS;
 using Gurux.DLMS.Enums;
 using Gurux.DLMS.Objects;
 using Gurux.Net;
@@ -211,6 +214,119 @@ public class DLMSClient : IDisposable, IDlmsClient
             }
         }
         return result;
+    }
+
+    public ProfileGenericValuesDto ReadProfileGenericValue(KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter)
+    {
+        InitializeConnection(false);
+
+        var gxObject = settings.client.Objects.FindByLN(ObjectType.None, it.Key) ??
+            new GXDLMSObject { LogicalName = it.Key };
+
+        if (gxObject is not GXDLMSProfileGeneric gxpg)
+            throw new StatusCodeException(400, "Invalid profile generic logical name");
+
+        reader.GetProfileGeneric(gxpg, filter);
+
+        var result = new ProfileGenericValuesDto();
+        if (gxpg.Buffer.Count == 0) return result;
+        var assignMaps = GetAssignMaps(result, gxpg.CaptureObjects.Select(p => $"{p.Key.Description} ({p.Key.LogicalName})"), gxpg.Buffer.First());
+        var span = CollectionsMarshal.AsSpan(gxpg.Buffer);
+
+        foreach (var buffer in span.Slice(1))
+            for (var i = 0; i < buffer.Length; i++) assignMaps[i](buffer[i]);
+
+        if (settings.outputFile != null)
+        {
+            try
+            {
+                settings.client.Objects.Save(settings.outputFile, new GXXmlWriterSettings() { UseMeterTime = true, IgnoreDefaultValues = false });
+            }
+            catch (Exception)
+            {
+                //It's OK if this fails.
+            }
+        }
+        return result;
+    }
+
+    private Action<object>[] GetAssignMaps(ProfileGenericValuesDto target, IEnumerable<string> key, IEnumerable<object> buffer)
+    {
+        var mapper = new Action<object>[buffer.Count()];
+        var i = -1;
+        foreach (var val in buffer)
+        {
+            ++i;
+            if (i == 0)
+                if (val is GXDateTime)
+                {
+                    DateTimeAssign(target, val); //first insert
+                    mapper[i] = (obj) => DateTimeAssign(target, obj);
+                    continue;
+                }
+                else throw new StatusCodeException(500, "Invalid object type, first column should be a clock type");
+
+            if (val is int or uint or long or ulong or float or double or decimal)
+            {
+                var doubleList = new List<double>();
+                target.DoubleValues[key.ElementAt(i)] = doubleList;
+
+                NumberAssign(doubleList, val); //first insert
+                mapper[i] = (obj) => NumberAssign(doubleList, obj);
+                continue;
+            }
+
+            var valueList = new List<string>();
+            target.StringValues[key.ElementAt(i)] = valueList;
+
+            StringAssign(valueList, val); //first insert
+            mapper[i] = (obj) => StringAssign(valueList, obj);
+        }
+        return mapper;
+    }
+    private void StringAssign(List<string> target, object value)
+    {
+        target.Add(value.ToString() ?? string.Empty);
+    }
+    private void NumberAssign(List<double> target, object value)
+    {
+        double result = 0;
+
+        switch (value)
+        {
+            case double d:
+                result = d;
+                break;
+            case int i:
+                result = i;
+                break;
+            case long l:
+                result = l;
+                break;
+            case float f:
+                result = f;
+                break;
+            case decimal m:
+                result = (double)m;
+                break;
+            case uint i:
+                result = i;
+                break;
+            case ulong i:
+                result = i;
+                break;
+            case string s when double.TryParse(s, out var parsed):
+                value = parsed;
+                break;
+            default:
+                throw new InvalidCastException("Not a numeric value");
+        }
+        target.Add(result);
+    }
+    private void DateTimeAssign(ProfileGenericValuesDto target, object value)
+    {
+        if (value is GXDateTime time) target.Times.Add(time.Value.UtcDateTime);
+        else throw new StatusCodeException(500, "first index type should be a clock");
     }
 
     private void InitializeConnection(bool skipGettingAssociationView)
