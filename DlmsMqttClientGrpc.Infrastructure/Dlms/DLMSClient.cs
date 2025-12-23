@@ -356,7 +356,7 @@ public class DLMSClient : IDisposable, IDlmsClient
     private object InternalReadObject(KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter)
     {
         var gxObject = settings.client.Objects.FindByLN(ObjectType.None, it.Key) ??
-            new GXDLMSObject { LogicalName = it.Key };
+            new GXDLMSData { LogicalName = it.Key };
 
         if (gxObject is GXDLMSProfileGeneric gxpg)
         {
