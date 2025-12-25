@@ -68,17 +68,19 @@ public class DlmsService(
         var client = sliding.Value;
         using var _ = sliding.BeginRead();
 
-        var reads = args[args.IndexOf("-g") + 1].Split(";");
-        if (reads.Length == 0) throw new StatusCodeException(400, "Logical name should not to be empty");
-        else if (reads.Length > 1) throw new StatusCodeException(400, "Only accept one logical name request");
+        var indexOfG = args.IndexOf("-g");
+        if (indexOfG == -1) throw new StatusCodeException(400, "Logical name should not to be empty");
+        var reads = args[indexOfG + 1].Split(";");
+        if (reads.Length > 1) throw new StatusCodeException(400, "Only accept one logical name request");
         var read = reads.First();
+        var part = read.Split(":");
+        if (part.Length != 2) throw new StatusCodeException(400, $"Invalid logical name: {read}");
 
         try
         {
-            var part = read.Split(":");
             var index = int.Parse(part[1]);
             if (index != 2) throw new StatusCodeException(400, "Index should be 2");
-            logger.LogDebug("Reading object {0}...", read);
+            logger.LogDebug("Reading object {read}...", read);
             var value = client.ReadProfileGenericValue(new KeyValuePair<string, int>(part[0], index), new()
             {
                 Skip = request.CustomArgs.Skip,

@@ -31,13 +31,13 @@ message ConnectAndReadReply{
 }
 
 message ProfileGenericReply{
-	repeated google.protobuf.Timestamp times = 1;
-	map<string, DoubleList> number_values = 2;
-	map<string, StringList> string_values = 3;
+	repeated string number_schema = 1;
+	repeated string string_schema = 2;
+	repeated ProfileGenericRow rows = 3;
 }
-message DoubleList{
-	repeated double values = 1;
-}
-message StringList{
-	repeated string values = 1;
+
+message ProfileGenericRow{
+	google.protobuf.Timestamp time = 1;
+	repeated double number_values = 2;
+	repeated string string_values = 3;
 }

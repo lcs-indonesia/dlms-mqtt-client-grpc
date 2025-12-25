@@ -6,19 +6,19 @@ public static class DlmsMapper
     public static ProfileGenericReply ToProfileGenericReply(this ProfileGenericValuesDto source)
     {
         var result = new ProfileGenericReply();
-        result.Times.AddRange(source.Times.Select(p => p.ToTimestamp()));
-        foreach (var pair in source.DoubleValues)
+        result.NumberSchema.AddRange(source.DobleSchema);
+        result.StringSchema.AddRange(source.StringSchema);
+        result.Rows.AddRange(source.Rows.Select(p => p.ToProfileGenericRow()));
+        return result;
+    }
+    public static ProfileGenericRow ToProfileGenericRow(this ProfileGenericRowDto source)
+    {
+        var result = new ProfileGenericRow()
         {
-            var list = new DoubleList();
-            list.Values.AddRange(pair.Value);
-            result.NumberValues.Add(pair.Key, list);
-        }
-        foreach (var pair in source.StringValues)
-        {
-            var list = new StringList();
-            list.Values.AddRange(pair.Value);
-            result.StringValues.Add(pair.Key, list);
-        }
+            Time = source.Time.ToTimestamp()
+        };
+        result.NumberValues.AddRange(source.DoubleValues);
+        result.StringValues.AddRange(source.StringValues);
         return result;
     }
 }

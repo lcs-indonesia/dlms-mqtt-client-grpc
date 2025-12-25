@@ -13,7 +13,7 @@ public class ReadProfileGenericValue : DlmsCLientTestBase
         using var _ = sliding.BeginRead();
         var result = sliding.Value.ReadProfileGenericValue(pair, new());
 
-        result.Times.Should().NotBeEmpty();
+        result.Rows.Should().NotBeEmpty();
     }
 
 }

@@ -224,17 +224,20 @@ public class DLMSClient : IDisposable, IDlmsClient
             new GXDLMSObject { LogicalName = it.Key };
 
         if (gxObject is not GXDLMSProfileGeneric gxpg)
-            throw new StatusCodeException(400, "Invalid profile generic logical name");
+            throw new StatusCodeException(400, $"Invalid profile generic logical name: {it.Key}");
 
         reader.GetProfileGeneric(gxpg, filter);
 
         var result = new ProfileGenericValuesDto();
         if (gxpg.Buffer.Count == 0) return result;
         var assignMaps = GetAssignMaps(result, gxpg.CaptureObjects.Select(p => $"{p.Key.Description} ({p.Key.LogicalName})"), gxpg.Buffer.First());
-        var span = CollectionsMarshal.AsSpan(gxpg.Buffer);
 
-        foreach (var buffer in span.Slice(1))
-            for (var i = 0; i < buffer.Length; i++) assignMaps[i](buffer[i]);
+        foreach(var buffer in gxpg.Buffer)
+        {
+            var row = new ProfileGenericRowDto();
+            for (var i=0; i<buffer.Length; i++) assignMaps[i](row, buffer[i]);
+            result.Rows.Add(row);
+        }
 
         if (settings.outputFile != null)
         {
@@ -250,82 +253,56 @@ public class DLMSClient : IDisposable, IDlmsClient
         return result;
     }
 
-    private Action<object>[] GetAssignMaps(ProfileGenericValuesDto target, IEnumerable<string> key, IEnumerable<object> buffer)
+    private static Action<ProfileGenericRowDto,object>[] GetAssignMaps(
+        ProfileGenericValuesDto target, IEnumerable<string> key, IEnumerable<object> buffer)
     {
-        var mapper = new Action<object>[buffer.Count()];
+        var mapper = new Action<ProfileGenericRowDto,object>[buffer.Count()];
         var i = -1;
         foreach (var val in buffer)
         {
             ++i;
             if (i == 0)
-                if (val is GXDateTime)
-                {
-                    DateTimeAssign(target, val); //first insert
-                    mapper[i] = (obj) => DateTimeAssign(target, obj);
-                    continue;
-                }
-                else throw new StatusCodeException(500, "Invalid object type, first column should be a clock type");
-
-            if (val is int or uint or long or ulong or float or double or decimal)
             {
-                var doubleList = new List<double>();
-                target.DoubleValues[key.ElementAt(i)] = doubleList;
-
-                NumberAssign(doubleList, val); //first insert
-                mapper[i] = (obj) => NumberAssign(doubleList, obj);
+                if (val is not GXDateTime) throw new StatusCodeException(500, "Invalid object type, first column should be a clock type");
+                mapper[i] = DateTimeAssign;
                 continue;
             }
 
-            var valueList = new List<string>();
-            target.StringValues[key.ElementAt(i)] = valueList;
+            if (val is int or uint or long or ulong or float or double or decimal)
+            {
+                target.DobleSchema.Add(key.ElementAt(i)); //add schema
+                mapper[i] = NumberAssign;
+                continue;
+            }
 
-            StringAssign(valueList, val); //first insert
-            mapper[i] = (obj) => StringAssign(valueList, obj);
+            target.StringSchema.Add(key.ElementAt(i)); //add schema
+            mapper[i] = StringAssign;
         }
         return mapper;
     }
-    private void StringAssign(List<string> target, object value)
+    private static void StringAssign(ProfileGenericRowDto target, object value)
     {
-        target.Add(value.ToString() ?? string.Empty);
+        target.StringValues.Add(value.ToString() ?? string.Empty);
     }
-    private void NumberAssign(List<double> target, object value)
+    private static void NumberAssign(ProfileGenericRowDto target, object value)
     {
-        double result = 0;
-
-        switch (value)
+        var result = value switch
         {
-            case double d:
-                result = d;
-                break;
-            case int i:
-                result = i;
-                break;
-            case long l:
-                result = l;
-                break;
-            case float f:
-                result = f;
-                break;
-            case decimal m:
-                result = (double)m;
-                break;
-            case uint i:
-                result = i;
-                break;
-            case ulong i:
-                result = i;
-                break;
-            case string s when double.TryParse(s, out var parsed):
-                value = parsed;
-                break;
-            default:
-                throw new InvalidCastException("Not a numeric value");
-        }
-        target.Add(result);
+            double d => d,
+            int i => i,
+            long l => l,
+            float f => (double)f,
+            decimal m => (double)m,
+            uint i => i,
+            ulong i => i,
+            string s when double.TryParse(s, out var parsed) => parsed,
+            _ => throw new InvalidCastException("Not a numeric value"),
+        };
+        target.DoubleValues.Add(result);
     }
-    private void DateTimeAssign(ProfileGenericValuesDto target, object value)
+    private static void DateTimeAssign(ProfileGenericRowDto target, object value)
     {
-        if (value is GXDateTime time) target.Times.Add(time.Value.UtcDateTime);
+        if (value is GXDateTime time) target.Time = time.Value.UtcDateTime;
         else throw new StatusCodeException(500, "first index type should be a clock");
     }
 
