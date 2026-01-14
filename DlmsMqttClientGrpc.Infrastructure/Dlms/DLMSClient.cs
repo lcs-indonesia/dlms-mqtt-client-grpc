@@ -152,6 +152,28 @@ public class DLMSClient : IDisposable, IDlmsClient
         reader.Close();
         Console.WriteLine("DLMS Client disposed");
     }
+    public void SetDisconnectControl(bool value)
+    {
+        const string ln = "0.0.96.3.10.255"; //default ln
+        var control = GetAndReadObject<GXDLMSDisconnectControl>(new(ln, 4), new(),ObjectType.DisconnectControl);
+        if (control is not GXDLMSDisconnectControl gxDC)
+            throw new StatusCodeException(400, $"Invalid disconnect control logical name: {ln}");
+        var packet = value ? gxDC.RemoteReconnect(settings.client) : gxDC.RemoteDisconnect(settings.client);
+        var reply = new GXReplyData();
+
+        var isRejected = reader.ReadDataBlock(packet, reply);
+        if (isRejected) throw new StatusCodeException(400, "Disconnect control execution failed");
+    }
+    public void ExecuteScript(string ln, int scriptId)
+    {
+        var gxScript = GetAndReadObject<GXDLMSScriptTable>(new(ln, 2), new(),ObjectType.ScriptTable);
+        var script = gxScript.Scripts.FirstOrDefault(p => p.Id == scriptId) ??
+            throw new StatusCodeException(400, $"Script ID: {scriptId} not found");
+        var packet = gxScript.Execute(settings.client, script);
+        var reply = new GXReplyData();
+
+        foreach (var pack in packet) reader.ReadDLMSPacket(pack, reply);
+    }
 
     public void ExportMeterCertificate()
     {
@@ -195,13 +217,17 @@ public class DLMSClient : IDisposable, IDlmsClient
             }
         }
     }
-
+    /// <summary>
+    /// Read value of target object
+    /// </summary>
+    /// <param name="it"></param>
+    /// <param name="filter"></param>
+    /// <returns>Value object</returns>
     public object ReadObject(KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter)
     {
         InitializeConnection(filter.SkipGettingAssociationView);
 
         var result = InternalReadObject(it, filter);
-
         if (settings.outputFile != null)
         {
             try
@@ -214,6 +240,39 @@ public class DLMSClient : IDisposable, IDlmsClient
             }
         }
         return result;
+    }
+    /// <summary>
+    /// Get Target object and read index
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="it"></param>
+    /// <param name="filter"></param>
+    /// <param name="objectType"></param>
+    /// <returns>GXDLMSObject as T</returns>
+    /// <exception cref="StatusCodeException"></exception>
+    public T GetAndReadObject<T>(KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter,ObjectType objectType) 
+        where T : GXDLMSObject
+    {
+        InitializeConnection(filter.SkipGettingAssociationView);
+        var gxObject = settings.client.Objects.FindByLN(objectType, it.Key) ??
+            throw new StatusCodeException(400, $"Invalid logical name: {it.Key}");
+        if(gxObject is not T gxTarget)
+            throw new StatusCodeException(400,$"Invalid gx object type: {gxObject.ObjectType}");
+
+        var _ = InternalReadObject(it, filter, gxTarget);
+
+        if (settings.outputFile != null)
+        {
+            try
+            {
+                settings.client.Objects.Save(settings.outputFile, new GXXmlWriterSettings() { UseMeterTime = true, IgnoreDefaultValues = false });
+            }
+            catch (Exception)
+            {
+                //It's OK if this fails.
+            }
+        }
+        return gxTarget;
     }
 
     public ProfileGenericValuesDto ReadProfileGenericValue(KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter)
@@ -232,10 +291,10 @@ public class DLMSClient : IDisposable, IDlmsClient
         if (gxpg.Buffer.Count == 0) return result;
         var assignMaps = GetAssignMaps(result, gxpg.CaptureObjects.Select(p => $"{p.Key.Description} ({p.Key.LogicalName})"), gxpg.Buffer.First());
 
-        foreach(var buffer in gxpg.Buffer)
+        foreach (var buffer in gxpg.Buffer)
         {
             var row = new ProfileGenericRowDto();
-            for (var i=0; i<buffer.Length; i++) assignMaps[i](row, buffer[i]);
+            for (var i = 0; i < buffer.Length; i++) assignMaps[i](row, buffer[i]);
             result.Rows.Add(row);
         }
 
@@ -330,9 +389,9 @@ public class DLMSClient : IDisposable, IDlmsClient
             isInitialized = true;
         }
     }
-    private object InternalReadObject(KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter)
+    private object InternalReadObject(KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter,GXDLMSObject? gxObject = null)
     {
-        var gxObject = settings.client.Objects.FindByLN(ObjectType.None, it.Key) ??
+        gxObject ??= settings.client.Objects.FindByLN(ObjectType.None, it.Key) ??
             new GXDLMSData { LogicalName = it.Key };
 
         if (gxObject is GXDLMSProfileGeneric gxpg)
