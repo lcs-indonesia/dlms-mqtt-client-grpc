@@ -98,6 +98,47 @@ public class DlmsService(
             throw new StatusCodeException(500, $"Error on dlms read object: {e.Message}", e);
         }
     }
+    //disconnect connect
+    public override Task<EmptyReply> ExecuteScriptTable(ExecuteScriptTableRequest request, ServerCallContext context)
+    {
+        var args = request.Args.ToList();
+        var sliding = GetClient(args, isClearCache: false);
+        var client = sliding.Value;
+        using var _ = sliding.BeginRead();
+
+        try
+        {
+            logger.LogDebug("Executing script {scriptId}...", request.ScriptId);
+            client.ExecuteScript(request.ScriptLn, request.ScriptId);
+        }
+        catch (Exception e)
+        {
+            sliding.Dispose();
+            throw new StatusCodeException(500, $"Error on execute script table: {e.Message}", e);
+        }
+
+        return Task.FromResult(new EmptyReply());
+    }
+    public override Task<EmptyReply> SetDisconnectControl(SetDisconnectControlRequest request, ServerCallContext context)
+    {
+        var args = request.Args.ToList();
+        var sliding = GetClient(args, isClearCache: false);
+        var client = sliding.Value;
+        using var _ = sliding.BeginRead();
+
+        try
+        {
+            logger.LogDebug("Setting disconnect control {value}...", request.Value);
+            client.SetDisconnectControl(request.Value);
+        }
+        catch (Exception e)
+        {
+            sliding.Dispose();
+            throw new StatusCodeException(500, $"Error on set disconnect control: {e.Message}", e);
+        }
+
+        return Task.FromResult(new EmptyReply());
+    }
 
     private ISlidingItem<IDlmsClient> GetClient(List<string> args, bool? isClearCache)
     {

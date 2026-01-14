@@ -11,6 +11,8 @@ package dlms;
 service DlmsProto{
 	rpc ConnectAndRead(ConnectAndReadRequest) returns (ConnectAndReadReply);
 	rpc ConnectAndReadProfileGeneric(ConnectAndReadRequest) returns (ProfileGenericReply);
+	rpc ExecuteScriptTable(ExecuteScriptTableRequest) returns (EmptyReply);
+	rpc SetDisconnectControl(SetDisconnectControlRequest) returns (EmptyReply);
 }
 
 message CustomReadArguments{
@@ -24,6 +26,18 @@ message CustomReadArguments{
 message ConnectAndReadRequest{
 	repeated string args = 1;
 	CustomReadArguments customArgs = 2;
+}
+
+message ExecuteScriptTableRequest{
+	repeated string args = 1;
+	string scriptLn = 2;
+	int32 scriptId = 3;
+}
+
+message SetDisconnectControlRequest{
+	repeated string args = 1;
+	bool value = 2;
+
 }
 
 message ConnectAndReadReply{
@@ -40,4 +54,7 @@ message ProfileGenericRow{
 	google.protobuf.Timestamp time = 1;
 	repeated double number_values = 2;
 	repeated string string_values = 3;
+}
+
+message EmptyReply{
 }
