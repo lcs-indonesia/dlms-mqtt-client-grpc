@@ -31,12 +31,16 @@
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
 //---------------------------------------------------------------------------
+using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Text;
+using System.Text.Unicode;
 using DLMS.Client.GXMedia.Mqtt;
 using DlmsMqttClientGrpc.Application.DTOs.Dlms;
 using DlmsMqttClientGrpc.Application.Exceptions;
 using DlmsMqttClientGrpc.Application.Interfaces;
 using Gurux.DLMS;
+using Gurux.DLMS.Ecdsa;
 using Gurux.DLMS.Enums;
 using Gurux.DLMS.Objects;
 using Gurux.Net;
@@ -155,7 +159,7 @@ public class DLMSClient : IDisposable, IDlmsClient
     public void SetDisconnectControl(bool value)
     {
         const string ln = "0.0.96.3.10.255"; //default ln
-        var control = GetAndReadObject<GXDLMSDisconnectControl>(new(ln, 4), new(),ObjectType.DisconnectControl);
+        var control = GetAndReadObject<GXDLMSDisconnectControl>(new(ln, 4), new(), ObjectType.DisconnectControl);
         if (control is not GXDLMSDisconnectControl gxDC)
             throw new StatusCodeException(400, $"Invalid disconnect control logical name: {ln}");
         var packet = value ? gxDC.RemoteReconnect(settings.client) : gxDC.RemoteDisconnect(settings.client);
@@ -166,7 +170,7 @@ public class DLMSClient : IDisposable, IDlmsClient
     }
     public void ExecuteScript(string ln, int scriptId)
     {
-        var gxScript = GetAndReadObject<GXDLMSScriptTable>(new(ln, 2), new(),ObjectType.ScriptTable);
+        var gxScript = GetAndReadObject<GXDLMSScriptTable>(new(ln, 2), new(), ObjectType.ScriptTable);
         var script = gxScript.Scripts.FirstOrDefault(p => p.Id == scriptId) ??
             throw new StatusCodeException(400, $"Script ID: {scriptId} not found");
         var packet = gxScript.Execute(settings.client, script);
@@ -250,14 +254,14 @@ public class DLMSClient : IDisposable, IDlmsClient
     /// <param name="objectType"></param>
     /// <returns>GXDLMSObject as T</returns>
     /// <exception cref="StatusCodeException"></exception>
-    public T GetAndReadObject<T>(KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter,ObjectType objectType) 
+    public T GetAndReadObject<T>(KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter, ObjectType objectType)
         where T : GXDLMSObject
     {
         InitializeConnection(filter.SkipGettingAssociationView);
         var gxObject = settings.client.Objects.FindByLN(objectType, it.Key) ??
             throw new StatusCodeException(400, $"Invalid logical name: {it.Key}");
-        if(gxObject is not T gxTarget)
-            throw new StatusCodeException(400,$"Invalid gx object type: {gxObject.ObjectType}");
+        if (gxObject is not T gxTarget)
+            throw new StatusCodeException(400, $"Invalid gx object type: {gxObject.ObjectType}");
 
         var _ = InternalReadObject(it, filter, gxTarget);
 
@@ -285,7 +289,7 @@ public class DLMSClient : IDisposable, IDlmsClient
         if (gxObject is not GXDLMSProfileGeneric gxpg)
             throw new StatusCodeException(400, $"Invalid profile generic logical name: {it.Key}");
 
-        reader.GetProfileGeneric(gxpg, filter);
+        reader.ReadProfileGeneric(gxpg, filter);
 
         var result = new ProfileGenericValuesDto();
         if (gxpg.Buffer.Count == 0) return result;
@@ -312,10 +316,10 @@ public class DLMSClient : IDisposable, IDlmsClient
         return result;
     }
 
-    private static Action<ProfileGenericRowDto,object>[] GetAssignMaps(
+    private static Action<ProfileGenericRowDto, object>[] GetAssignMaps(
         ProfileGenericValuesDto target, IEnumerable<string> key, IEnumerable<object> buffer)
     {
-        var mapper = new Action<ProfileGenericRowDto,object>[buffer.Count()];
+        var mapper = new Action<ProfileGenericRowDto, object>[buffer.Count()];
         var i = -1;
         foreach (var val in buffer)
         {
@@ -370,59 +374,37 @@ public class DLMSClient : IDisposable, IDlmsClient
         if (!isInitialized)
         {
             reader.InitializeConnection();
-            if (!skipGettingAssociationView && !isAssociationViewReaded && reader.GetAssociationView(settings.outputFile))
-            {
-                reader.GetProfileGenericColumns();
-                reader.GetScalersAndUnits();
-                if (settings.outputFile != null)
-                {
-                    try
-                    {
-                        settings.client.Objects.Save(settings.outputFile, new GXXmlWriterSettings() { UseMeterTime = true, IgnoreDefaultValues = false });
-                    }
-                    catch (Exception)
-                    {
-                        //It's OK if this fails.
-                    }
-                }
-            }
             isInitialized = true;
         }
+        if (!skipGettingAssociationView && !isAssociationViewReaded && reader.GetAssociationView(settings.outputFile))
+        {
+            reader.GetProfileGenericColumns();
+            reader.GetScalersAndUnits();
+            if (settings.outputFile != null)
+            {
+                try
+                {
+                    settings.client.Objects.Save(settings.outputFile, new GXXmlWriterSettings() { UseMeterTime = true, IgnoreDefaultValues = false });
+                }
+                catch (Exception)
+                {
+                    //It's OK if this fails.
+                }
+            }
+            isAssociationViewReaded = true;
+        }
     }
-    private object InternalReadObject(KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter,GXDLMSObject? gxObject = null)
+    private object InternalReadObject(KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter, GXDLMSObject? gxObject = null)
     {
-        gxObject ??= settings.client.Objects.FindByLN(ObjectType.None, it.Key) ??
-            new GXDLMSData { LogicalName = it.Key };
+        gxObject ??= settings.client.Objects.FindByLN(ObjectType.None, it.Key) ?? reader.GetObjectManually(it.Key);
 
         if (gxObject is GXDLMSProfileGeneric gxpg)
         {
-            if (it.Value == 2)
-            {
-                reader.GetProfileGeneric(gxpg, filter);
-
-                var result = gxpg.CaptureObjects.Select((p, index) => new
-                {
-                    p.Key.Description,
-                    values = gxpg.Buffer.Select(buff => buff[index]).ToList()
-                }).ToDictionary(p => p.Description, p => p.values);
-                return result;
-            }
-            if (it.Value == 3)
-            {
-                var result = new Dictionary<string, object>
-                {
-                    ["value"] = gxpg.CaptureObjects.Select(p => p.Key.Description)
-                };
-                return result;
-            }
+            var gxValue = reader.GetProfileGenericValue(gxpg, it.Value, filter);
+            if (gxValue != null) return gxValue;
         }
 
-        object val = reader.Read(gxObject, it.Value, filter.SkipGettingAssociationView);
-
-        if (val is GXDLMSClock gclk)
-        {
-            return gclk.Time;
-        }
+        object val = reader.Read(gxObject, it.Value);
 
         return val;
     }

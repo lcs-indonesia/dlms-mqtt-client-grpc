@@ -34,6 +34,7 @@
 using System.Diagnostics;
 using System.IO.Ports;
 using System.Text;
+using DlmsMqttClientGrpc.Application.DTOs.Dlms;
 using global::Gurux.Common;
 using global::Gurux.DLMS;
 using global::Gurux.DLMS.ASN;
@@ -48,6 +49,7 @@ using global::Gurux.Serial;
 
 
 namespace DLMS.Client;
+
 public class GXDLMSReader
 {
     /// <summary>
@@ -417,7 +419,7 @@ public class GXDLMSReader
             }
             GetCompactData();
             GetReadOut();
-            GetProfileGenerics();
+            ReadProfileGenerics();
             if (outputFile != null)
             {
                 try
@@ -1182,7 +1184,48 @@ public class GXDLMSReader
             Console.WriteLine("Index: " + pos + " Value: " + val);
         }
     }
-    public void GetProfileGeneric(GXDLMSProfileGeneric it, DlmsMqttClientGrpc.Application.DTOs.Dlms.DlmsReadObjectFilterDto filter)
+    public GXDLMSObject GetObjectManually(string ln)
+    {
+        const int index = 3;
+        var obj = new GXDLMSObject { LogicalName = ln };
+        try
+        {
+            var reply = (GXReplyData)Read(obj, index, skipUpdateValue: true);
+            if (TryUpdateObject(ln, index, reply.Value, out GXDLMSClock clock)) return clock;
+            if (TryUpdateObject(ln, index, reply.Value, out GXDLMSRegister register)) return register;
+            if (TryUpdateObject(ln, index, reply.Value, out GXDLMSProfileGeneric pg))
+            {
+                foreach (var pair in pg.CaptureObjects) Read(pair.Key, 3); // read scaler each capture object
+                return pg;
+            }
+        }
+        catch { }
+        return new GXDLMSData(ln);
+    }
+    public object? GetProfileGenericValue(GXDLMSProfileGeneric it, int attributeIndex, DlmsReadObjectFilterDto filter)
+    {
+        if (attributeIndex == 2)
+        {
+            ReadProfileGeneric(it, filter);
+
+            var result = it.CaptureObjects.Select((p, index) => new
+            {
+                p.Key.Description,
+                values = it.Buffer.Select(buff => buff[index]).ToList()
+            }).ToDictionary(p => p.Description, p => p.values);
+            return result;
+        }
+        if (attributeIndex == 3)
+        {
+            var result = new Dictionary<string, object>
+            {
+                ["value"] = it.CaptureObjects.Select(p => p.Key.Description)
+            };
+            return result;
+        }
+        return null;
+    }
+    public void ReadProfileGeneric(GXDLMSProfileGeneric it, DlmsMqttClientGrpc.Application.DTOs.Dlms.DlmsReadObjectFilterDto filter)
     {
         uint? entriesInUse = Client.CanRead(it, 7) ? Convert.ToUInt32(Read(it, 7)) : null;
         if (entriesInUse == 0 || it.CaptureObjects.Count == 0) return;
@@ -1202,7 +1245,7 @@ public class GXDLMSReader
 
         ReadRowsByEntry(it, filter.Skip ?? 1, filter.Take ?? 1);
     }
-    public void GetProfileGenerics()
+    public void ReadProfileGenerics()
     {
         //Find profile generics objects and read them.
         foreach (GXDLMSObject it in Client.Objects.GetObjects(ObjectType.ProfileGeneric))
@@ -1606,7 +1649,7 @@ public class GXDLMSReader
     /// <param name="it">COSEM object to read.</param>
     /// <param name="attributeIndex">Attribute index.</param>
     /// <returns>Read value.</returns>
-    public object Read(GXDLMSObject it, int attributeIndex, bool skipGettingAssociationView = false)
+    public object Read(GXDLMSObject it, int attributeIndex, bool skipUpdateValue = false)
     {
         if (Client.CanRead(it, attributeIndex))
         {
@@ -1629,7 +1672,7 @@ public class GXDLMSReader
             {
                 it.SetDataType(attributeIndex, reply.DataType);
             }
-            if (skipGettingAssociationView) return reply.Value;
+            if (skipUpdateValue) return reply;
             return Client.UpdateValue(it, attributeIndex, reply.Value);
         }
         else
@@ -1818,6 +1861,16 @@ public class GXDLMSReader
             Media = null;
             Client = null;
         }
+    }
+    private bool TryUpdateObject<T>(string ln, int attributeIndex, object value, out T gxObj) where T : GXDLMSObject, new()
+    {
+        gxObj = new T() { LogicalName = ln };
+        try
+        {
+            Client.UpdateValue(gxObj, attributeIndex, value);
+            return true;
+        }
+        catch { return false; }
     }
 
     /// <summary>
