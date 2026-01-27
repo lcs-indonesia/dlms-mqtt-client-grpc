@@ -31,7 +31,8 @@
             },
             "sourceFileMap": {
                 "/Views": "${workspaceFolder}/Views"
-            }
+            },
+            "launchWebBrowser": false
         },
         {
             "name": ".NET Core Attach",

@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using DlmsMqttClientGrpc.Application.DTOs.Dlms;
 using DlmsMqttClientGrpc.Application.Exceptions;
 using DlmsMqttClientGrpc.Application.Extensions;
@@ -12,6 +13,8 @@ public class DlmsService(
     IDlmsClientManager dlmsClientManager,
     ILogger<DlmsService> logger) : DlmsProto.DlmsProtoBase
 {
+    private static readonly JsonSerializerOptions writeJsonIntended = new() { WriteIndented = true };
+
     public override Task<ConnectAndReadReply> ConnectAndRead(ConnectAndReadRequest request, ServerCallContext context)
     {
         var args = request.Args.ToList();
@@ -26,7 +29,7 @@ public class DlmsService(
             foreach (var read in reads)
             {
                 if (dict.ContainsKey(read)) continue;
-                logger.LogDebug("Reading object {0}...", read);
+                logger.LogDebug("Reading object {read}...", read);
                 var part = read.Split(":");
                 var value = client.ReadObject(new KeyValuePair<string, int>(part[0], int.Parse(part[1])), new()
                 {
@@ -46,7 +49,7 @@ public class DlmsService(
         }
         try
         {
-            var data = JsonSerializer.Serialize(dict, new JsonSerializerOptions { WriteIndented = true });
+            var data = JsonSerializer.Serialize(dict, writeJsonIntended);
             logger.LogDebug("Reply data: {data}", data);
             var proto = data.ToProtoStruct();
             return Task.FromResult<ConnectAndReadReply>(new()
@@ -109,7 +112,8 @@ public class DlmsService(
         try
         {
             logger.LogDebug("Executing script {scriptId}...", request.ScriptId);
-            client.ExecuteScript(request.ScriptLn, request.ScriptId);
+            client.ExecuteScript(request.ScriptLn, request.ScriptId,
+                new() { SkipGettingAssociationView = request.SkipGettingAssociationView ?? false });
         }
         catch (Exception e)
         {
@@ -129,7 +133,8 @@ public class DlmsService(
         try
         {
             logger.LogDebug("Setting disconnect control {value}...", request.Value);
-            client.SetDisconnectControl(request.Value);
+            client.SetDisconnectControl(request.Value,
+                new() { SkipGettingAssociationView = request.SkipGettingAssociationView ?? false });
         }
         catch (Exception e)
         {
@@ -143,7 +148,7 @@ public class DlmsService(
     private ISlidingItem<IDlmsClient> GetClient(List<string> args, bool? isClearCache)
     {
         if (!TryGetTopic(args, out var topic) || topic == null)
-            throw new ArgumentNullException("Topic is null in args[].");
+            throw new ArgumentNullException(topic, "Topic is null in args[].");
         ISlidingItem<IDlmsClient> sliding;
         try
         {
@@ -155,7 +160,7 @@ public class DlmsService(
         }
         return sliding;
     }
-    private bool TryGetTopic(List<string> args, out string? topic)
+    private static bool TryGetTopic(List<string> args, out string? topic)
     {
         topic = null;
         var index = args.IndexOf("-q");

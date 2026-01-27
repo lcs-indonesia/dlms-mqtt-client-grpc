@@ -32,11 +32,13 @@ message ExecuteScriptTableRequest{
 	repeated string args = 1;
 	string scriptLn = 2;
 	int32 scriptId = 3;
+	google.protobuf.BoolValue SkipGettingAssociationView=4;
 }
 
 message SetDisconnectControlRequest{
 	repeated string args = 1;
 	bool value = 2;
+	google.protobuf.BoolValue SkipGettingAssociationView=3;
 
 }
 

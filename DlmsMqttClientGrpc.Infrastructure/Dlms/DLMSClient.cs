@@ -156,10 +156,10 @@ public class DLMSClient : IDisposable, IDlmsClient
         reader.Close();
         Console.WriteLine("DLMS Client disposed");
     }
-    public void SetDisconnectControl(bool value)
+    public void SetDisconnectControl(bool value,DlmsReadObjectFilterDto filter)
     {
         const string ln = "0.0.96.3.10.255"; //default ln
-        var control = GetAndReadObject<GXDLMSDisconnectControl>(new(ln, 4), new(), ObjectType.DisconnectControl);
+        var control = GetAndReadObject<GXDLMSDisconnectControl>(new(ln, 4), filter, ObjectType.DisconnectControl);
         if (control is not GXDLMSDisconnectControl gxDC)
             throw new StatusCodeException(400, $"Invalid disconnect control logical name: {ln}");
         var packet = value ? gxDC.RemoteReconnect(settings.client) : gxDC.RemoteDisconnect(settings.client);
@@ -168,9 +168,9 @@ public class DLMSClient : IDisposable, IDlmsClient
         var isRejected = reader.ReadDataBlock(packet, reply);
         if (isRejected) throw new StatusCodeException(400, "Disconnect control execution failed");
     }
-    public void ExecuteScript(string ln, int scriptId)
+    public void ExecuteScript(string ln, int scriptId,DlmsReadObjectFilterDto filter)
     {
-        var gxScript = GetAndReadObject<GXDLMSScriptTable>(new(ln, 2), new(), ObjectType.ScriptTable);
+        var gxScript = GetAndReadObject<GXDLMSScriptTable>(new(ln, 2), filter, ObjectType.ScriptTable);
         var script = gxScript.Scripts.FirstOrDefault(p => p.Id == scriptId) ??
             throw new StatusCodeException(400, $"Script ID: {scriptId} not found");
         var packet = gxScript.Execute(settings.client, script);
@@ -258,8 +258,7 @@ public class DLMSClient : IDisposable, IDlmsClient
         where T : GXDLMSObject
     {
         InitializeConnection(filter.SkipGettingAssociationView);
-        var gxObject = settings.client.Objects.FindByLN(objectType, it.Key) ??
-            throw new StatusCodeException(400, $"Invalid logical name: {it.Key}");
+        var gxObject = settings.client.Objects.FindByLN(objectType, it.Key) ?? reader.GetObjectManually(it.Key);
         if (gxObject is not T gxTarget)
             throw new StatusCodeException(400, $"Invalid gx object type: {gxObject.ObjectType}");
 

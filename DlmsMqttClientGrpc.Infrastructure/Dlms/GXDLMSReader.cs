@@ -1186,22 +1186,33 @@ public class GXDLMSReader
     }
     public GXDLMSObject GetObjectManually(string ln)
     {
-        const int index = 3;
-        var obj = new GXDLMSObject { LogicalName = ln };
-        try
-        {
-            var reply = (GXReplyData)Read(obj, index, skipUpdateValue: true);
-            if (TryUpdateObject(ln, index, reply.Value, out GXDLMSClock clock)) return clock;
-            if (TryUpdateObject(ln, index, reply.Value, out GXDLMSRegister register)) return register;
-            if (TryUpdateObject(ln, index, reply.Value, out GXDLMSProfileGeneric pg))
-            {
-                foreach (var pair in pg.CaptureObjects) Read(pair.Key, 3); // read scaler each capture object
-                return pg;
-            }
-        }
-        catch { }
-        return new GXDLMSData(ln);
+        //is clock
+        if (ln == "0.0.1.0.0.255" && TryGetClockManually(out var gxClock)) return gxClock!;
+        //is profile generic
+        if (TryGetProfileGenericManually(ln, out var gxPg)) return gxPg!;
+        //is register
+        if (TryGetRegisterManually(ln, out var gxRegister)) return gxRegister!;
+        //is data or script
+        if (TryGetDataOrScriptManually(ln, out var gxObj)) return gxObj!;
+        //is DisconnectControl
+        if (TryGetDisconnectControlManually(ln, out var gxDc)) return gxDc!;
+        return new GXDLMSObject() { LogicalName = ln };
+
+        // const int index = 3;
+        // try
+        // {
+        //     var reply = (GXReplyData)Read(obj, index, skipUpdateValue: true);
+        //     if (TryUpdateObject(ln, index, reply.Value, out GXDLMSClock clock)) return clock;
+        //     if (TryUpdateObject(ln, index, reply.Value, out GXDLMSRegister register)) return register;
+        //     if (TryUpdateObject(ln, index, reply.Value, out GXDLMSProfileGeneric pg))
+        //     {
+        //         foreach (var pair in pg.CaptureObjects) Read(pair.Key, 3); // read scaler each capture object
+        //         return pg;
+        //     }
+        // }
+        // catch { }
     }
+
     public object? GetProfileGenericValue(GXDLMSProfileGeneric it, int attributeIndex, DlmsReadObjectFilterDto filter)
     {
         if (attributeIndex == 2)
@@ -1225,7 +1236,7 @@ public class GXDLMSReader
         }
         return null;
     }
-    public void ReadProfileGeneric(GXDLMSProfileGeneric it, DlmsMqttClientGrpc.Application.DTOs.Dlms.DlmsReadObjectFilterDto filter)
+    public void ReadProfileGeneric(GXDLMSProfileGeneric it, DlmsReadObjectFilterDto filter)
     {
         uint? entriesInUse = Client.CanRead(it, 7) ? Convert.ToUInt32(Read(it, 7)) : null;
         if (entriesInUse == 0 || it.CaptureObjects.Count == 0) return;
@@ -1906,5 +1917,112 @@ public class GXDLMSReader
             ReadDataBlock(data, reply);
             Client.ParseAccessResponse(list, reply.Data);
         }
+    }
+    /// <summary>
+    /// Read attribute 3-9 of clock manually
+    /// </summary>
+    /// <returns>Clock Object</returns>
+    private bool TryGetClockManually(out GXDLMSClock? clock)
+    {
+        try
+        {
+            var obj = new GXDLMSClock();
+            //test read
+            Read(obj, 1);
+            //read rest attirbute index 3-9
+            var list = Enumerable.Range(3, 7).Select(p => new KeyValuePair<GXDLMSObject, int>(obj, p)).ToList();
+            ReadList(list);
+            clock = obj;
+            return true;
+        }
+        catch { clock = null; return false; }
+    }
+    /// <summary>
+    /// Read attribute 3-8 of profile generic manually </br>
+    /// Read scaler on capture objects attribute 3 manually
+    /// </summary>
+    /// <param name="ln">Logical Name / Obiscode</param>
+    /// <returns>Profile Generic Object</returns>
+    private bool TryGetProfileGenericManually(string ln, out GXDLMSProfileGeneric? gxPg)
+    {
+        try
+        {
+            var obj = new GXDLMSProfileGeneric(ln);
+            //test read
+            Read(obj, 1);
+            //read rest attirbute index 3-8
+            var list = Enumerable.Range(3, 6).Select(p => new KeyValuePair<GXDLMSObject, int>(obj, p)).ToList();
+            ReadList(list);
+            //read scaler on capture objects attribute 3 manually
+            foreach (var oc in obj.CaptureObjects) try { Read(oc.Key, 3); } catch { } //skip exception
+            gxPg = obj;
+            return true;
+        }
+        catch { gxPg = null; return false; }
+    }
+    /// <summary>
+    /// Read attribute 3-4 of disconnect control manually
+    /// </summary>
+    /// <param name="ln">Logical Name / Obiscode</param>
+    /// <returns>Disconnect Control Object</returns>
+    private bool TryGetDisconnectControlManually(string ln, out GXDLMSDisconnectControl? gxDc)
+    {
+        try
+        {
+            var obj = new GXDLMSDisconnectControl(ln);
+            //test read
+            Read(obj, 1);
+            //read rest attirbute index 2-4
+            var list = Enumerable.Range(2, 3).Select(p => new KeyValuePair<GXDLMSObject, int>(obj, p)).ToList();
+            ReadList(list);
+            gxDc = obj;
+            return true;
+        }
+        catch { gxDc = null; return false; }
+    }
+    /// <summary>
+    /// Read attribute 3 of register manually
+    /// </summary>
+    /// <param name="ln">Logical Name / Obiscode</param>
+    /// <returns>Register Object</returns>
+    private bool TryGetRegisterManually(string ln, out GXDLMSRegister? gxRegister)
+    {
+        try
+        {
+            var obj = new GXDLMSRegister(ln);
+            //test read
+            Read(obj, 1);
+            //read rest attibute index 3;
+            Read(obj, 3);
+            gxRegister = obj;
+            return true;
+        }
+        catch { gxRegister = null; return false; }
+    }
+    /// <summary>
+    /// Detect it is script or data object
+    /// </summary>
+    /// <param name="ln">Logical Name / Obiscode</param>
+    /// <returns>Data or Script Object</returns>
+    private bool TryGetDataOrScriptManually(string ln, out GXDLMSObject? gxObj)
+    {
+        gxObj = null;
+        const int index = 2;
+        try
+        {
+            var script = new GXDLMSScriptTable(ln);
+            Read(script, index);
+            gxObj = script;
+            return true;
+        }
+        catch { }
+        try
+        {
+            var data = new GXDLMSData(ln);
+            Read(data, index);
+            gxObj = data;
+            return true;
+        }
+        catch { return false; }
     }
 }
