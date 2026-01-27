@@ -24,7 +24,12 @@ public class SlidingItem<T> : ISlidingItem<T>
     private bool IsDisposed => dispose == 1;
     public IDisposable BeginRead()
     {
-        if (IsDisposed) throw new ObjectDisposedException(key);
+        if (IsDisposed)
+        {
+            callback?.Invoke(key);
+            timer.Dispose();
+            ObjectDisposedException.ThrowIf(IsDisposed,key);
+        }
 
         Interlocked.Increment(ref readers);
 
