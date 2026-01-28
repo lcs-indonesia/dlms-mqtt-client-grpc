@@ -134,7 +134,7 @@ public class DlmsService(
         {
             logger.LogDebug("Setting disconnect control {value}...", request.Value);
             client.SetDisconnectControl(request.Value,
-                new() { SkipGettingAssociationView = request.SkipGettingAssociationView ?? false });
+                new() { SkipGettingAssociationView = request.SkipGettingAssociationView ?? false }, request.ScriptLn);
         }
         catch (Exception e)
         {

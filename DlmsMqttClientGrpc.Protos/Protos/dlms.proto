@@ -38,8 +38,8 @@ message ExecuteScriptTableRequest{
 message SetDisconnectControlRequest{
 	repeated string args = 1;
 	bool value = 2;
-	google.protobuf.BoolValue SkipGettingAssociationView=3;
-
+	string scriptLn = 3;
+	google.protobuf.BoolValue SkipGettingAssociationView=4;
 }
 
 message ConnectAndReadReply{

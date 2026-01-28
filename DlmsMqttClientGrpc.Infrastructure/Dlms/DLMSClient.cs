@@ -156,9 +156,9 @@ public class DLMSClient : IDisposable, IDlmsClient
         reader.Close();
         Console.WriteLine("DLMS Client disposed");
     }
-    public void SetDisconnectControl(bool value,DlmsReadObjectFilterDto filter)
+    public void SetDisconnectControl(bool value,DlmsReadObjectFilterDto filter,string? ln = null)
     {
-        const string ln = "0.0.96.3.10.255"; //default ln
+        if (string.IsNullOrEmpty(ln))ln = "0.0.96.3.10.255"; //default ln
         var control = GetAndReadObject<GXDLMSDisconnectControl>(new(ln, 4), filter, ObjectType.DisconnectControl);
         if (control is not GXDLMSDisconnectControl gxDC)
             throw new StatusCodeException(400, $"Invalid disconnect control logical name: {ln}");
