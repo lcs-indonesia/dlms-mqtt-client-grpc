@@ -23,13 +23,15 @@ public static class SettingsExtension
     private static IConfigurationSection TryValidateAndGetSection<T>(this IConfiguration config,
         ref List<string> missingFields) where T : class, new()
     {
-        var t = typeof(T);
-        var section = config.GetSection(t.Name);
+        var t = new T();
+        var type = t.GetType();
+        var section = config.GetSection(type.Name);
+        section.Bind(t);
 
-        foreach (var prop in t.GetProperties())
+        foreach (var prop in type.GetProperties())
         {
-            var value = section.GetValue(prop.PropertyType, prop.Name);
-            if (value == null) missingFields.Add($"- {t.Name}.{prop.Name} is null.");
+            var value = prop.GetValue(t);
+            if (value == null) missingFields.Add($"- {type.Name}.{prop.Name} is null.");
         }
         return section;
     }

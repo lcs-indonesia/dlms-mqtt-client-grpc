@@ -1,0 +1,28 @@
+[
+  {
+    "label": "Debug .NET Core App",
+    "adapter": "netcoredbg",
+    "request": "launch",
+    "program": "${ZED_WORKTREE_ROOT}/DlmsMqttClientGrpc.Presentation/bin/Debug/net8.0/DlmsMqttClientGrpc.Presentation.dll",
+    "cwd": "${ZED_WORKTREE_ROOT}/DlmsMqttClientGrpc.Presentation",
+    "env": {
+      "ASPNETCORE_ENVIRONMENT": "Development",
+      "ASPNETCORE_URLS": "http://localhost:5093",
+    },
+    "build": {
+      "command": "dotnet",
+      "args": [
+        "build",
+        "${ZED_WORKTREE_ROOT}/DlmsMqttClientGrpc.Presentation/DlmsMqttClientGrpc.Presentation.csproj",
+        "-p:Configuration=Debug",
+        "-p:TargetFramework=net8.0",
+      ],
+    },
+  },
+  {
+    "label": "Attach .NET Core App",
+    "adapter": "netcoredbg",
+    "request": "attach",
+    "processId": 62177,
+  },
+]

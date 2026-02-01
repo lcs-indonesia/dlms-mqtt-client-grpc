@@ -4,18 +4,17 @@ using DlmsMqttClientGrpc.Application.DTOs.Dlms;
 using DlmsMqttClientGrpc.Application.Exceptions;
 using DlmsMqttClientGrpc.Application.Extensions;
 using DlmsMqttClientGrpc.Application.Interfaces;
-using Grpc.Core;
 using Microsoft.Extensions.Logging;
 
 namespace DlmsMqttClientGrpc.Application.Services;
 
 public class DlmsService(
     IDlmsClientManager dlmsClientManager,
-    ILogger<DlmsService> logger) : DlmsProto.DlmsProtoBase
+    ILogger<DlmsService> logger)
 {
     private static readonly JsonSerializerOptions writeJsonIntended = new() { WriteIndented = true };
 
-    public override Task<ConnectAndReadReply> ConnectAndRead(ConnectAndReadRequest request, ServerCallContext context)
+    public Task<ConnectAndReadReply> ConnectAndRead(ConnectAndReadRequest request, CancellationToken cancellationToken)
     {
         var args = request.Args.ToList();
         var sliding = GetClient(args, request.CustomArgs.IsClearCache);
@@ -38,7 +37,7 @@ public class DlmsService(
                     From = request.CustomArgs.From?.ToDateTime(),
                     To = request.CustomArgs.To?.ToDateTime(),
                     SkipGettingAssociationView = request.CustomArgs.SkipGettingAssociationView ?? false,
-                });
+                }, cancellationToken);
                 dict.Add(read, value);
             }
         }
@@ -63,8 +62,8 @@ public class DlmsService(
         }
     }
 
-    public override Task<ProfileGenericReply> ConnectAndReadProfileGeneric(
-            ConnectAndReadRequest request, ServerCallContext context)
+    public Task<ProfileGenericReply> ConnectAndReadProfileGeneric(
+            ConnectAndReadRequest request, CancellationToken cancellationToken)
     {
         var args = request.Args.ToList();
         var sliding = GetClient(args, request.CustomArgs.IsClearCache);
@@ -91,7 +90,7 @@ public class DlmsService(
                 From = request.CustomArgs.From?.ToDateTime(),
                 To = request.CustomArgs.To?.ToDateTime(),
                 SkipGettingAssociationView = request.CustomArgs.SkipGettingAssociationView ?? false,
-            });
+            }, cancellationToken);
 
             return Task.FromResult(value.ToProfileGenericReply());
         }
@@ -102,7 +101,7 @@ public class DlmsService(
         }
     }
     //disconnect connect
-    public override Task<EmptyReply> ExecuteScriptTable(ExecuteScriptTableRequest request, ServerCallContext context)
+    public Task<EmptyReply> ExecuteScriptTable(ExecuteScriptTableRequest request, CancellationToken cancellationToken)
     {
         var args = request.Args.ToList();
         var sliding = GetClient(args, isClearCache: false);
@@ -113,7 +112,7 @@ public class DlmsService(
         {
             logger.LogDebug("Executing script {scriptId}...", request.ScriptId);
             client.ExecuteScript(request.ScriptLn, request.ScriptId,
-                new() { SkipGettingAssociationView = request.SkipGettingAssociationView ?? false });
+                new() { SkipGettingAssociationView = request.SkipGettingAssociationView ?? false }, cancellationToken);
         }
         catch (Exception e)
         {
@@ -123,7 +122,7 @@ public class DlmsService(
 
         return Task.FromResult(new EmptyReply());
     }
-    public override Task<EmptyReply> SetDisconnectControl(SetDisconnectControlRequest request, ServerCallContext context)
+    public Task<EmptyReply> SetDisconnectControl(SetDisconnectControlRequest request, CancellationToken cancellationToken)
     {
         var args = request.Args.ToList();
         var sliding = GetClient(args, isClearCache: false);
@@ -134,7 +133,7 @@ public class DlmsService(
         {
             logger.LogDebug("Setting disconnect control {value}...", request.Value);
             client.SetDisconnectControl(request.Value,
-                new() { SkipGettingAssociationView = request.SkipGettingAssociationView ?? false }, request.ScriptLn);
+                new() { SkipGettingAssociationView = request.SkipGettingAssociationView ?? false }, request.ScriptLn, cancellationToken);
         }
         catch (Exception e)
         {

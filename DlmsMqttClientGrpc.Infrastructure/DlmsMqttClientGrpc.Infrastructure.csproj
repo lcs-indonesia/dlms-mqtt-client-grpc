@@ -13,8 +13,9 @@
     <PackageReference Include="Gurux.Net" Version="8.4.2503.1001" />
 	<PackageReference Include="Gurux.Serial" Version="8.4.2503.603" />
 	<PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.0" />
-  </ItemGroup>	
-	
+    <PackageReference Include="nats.net" Version="2.6.14" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\DlmsMqttClientGrpc.Application\DlmsMqttClientGrpc.Application.csproj" />
     <ProjectReference Include="..\DlmsMqttClientGrpc.Domain\DlmsMqttClientGrpc.Domain.csproj" />

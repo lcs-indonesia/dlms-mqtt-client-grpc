@@ -407,15 +407,15 @@ public class GXDLMSReader
     /// <summary>
     /// Read all data from the meter.
     /// </summary>
-    public void ReadAll(string outputFile)
+    public void ReadAll(string outputFile, CancellationToken cancellationToken)
     {
         try
         {
-            InitializeConnection();
-            if (GetAssociationView(outputFile))
+            InitializeConnection(cancellationToken);
+            if (GetAssociationView(outputFile, cancellationToken))
             {
-                GetScalersAndUnits();
-                GetProfileGenericColumns();
+                GetScalersAndUnits(cancellationToken);
+                GetProfileGenericColumns(cancellationToken);
             }
             GetCompactData();
             GetReadOut();
@@ -825,7 +825,7 @@ public class GXDLMSReader
     /// <summary>
     /// Initialize connection to the meter.
     /// </summary>
-    public void InitializeConnection()
+    public void InitializeConnection(CancellationToken cancellationToken = default)
     {
         Console.WriteLine("Standard: " + Client.Standard);
         if (Client.Ciphering.Security != Security.None)
@@ -839,9 +839,15 @@ public class GXDLMSReader
                 Console.WriteLine("Dedicated key: " + GXCommon.ToHex(Client.Ciphering.DedicatedKey, true));
             }
         }
+        cancellationToken.ThrowIfCancellationRequested();
         UpdateFrameCounter();
+
+        cancellationToken.ThrowIfCancellationRequested();
         InitializeOpticalHead();
-        GXReplyData reply = new GXReplyData();
+
+        GXReplyData reply = new();
+
+        cancellationToken.ThrowIfCancellationRequested();
         SNRMRequest();
         if (!Client.PreEstablishedConnection)
         {
@@ -950,7 +956,7 @@ public class GXDLMSReader
     /// <summary>
     /// Read association view.
     /// </summary>
-    public bool GetAssociationView(string outputFile)
+    public bool GetAssociationView(string outputFile, CancellationToken cancellationToken = default)
     {
         if (outputFile != null)
         {
@@ -972,7 +978,8 @@ public class GXDLMSReader
                 }
             }
         }
-        GXReplyData reply = new GXReplyData();
+        GXReplyData reply = new();
+        cancellationToken.ThrowIfCancellationRequested();
         ReadDataBlock(Client.GetObjectsRequest(), reply);
         Client.ParseObjects(reply.Data, true);
         //Access rights must read differently when short Name referencing is used.
@@ -1003,49 +1010,39 @@ public class GXDLMSReader
     /// <summary>
     /// Read scalers and units.
     /// </summary>
-    public void GetScalersAndUnits()
+    public void GetScalersAndUnits(CancellationToken cancellationToken)
     {
-        GXDLMSObjectCollection objs = Client.Objects.GetObjects(new ObjectType[] { ObjectType.Register, ObjectType.ExtendedRegister, ObjectType.DemandRegister });
+        GXDLMSObjectCollection objs = Client.Objects.GetObjects([ObjectType.Register, ObjectType.ExtendedRegister, ObjectType.DemandRegister]);
         //If trace is info.
-        if (Trace > TraceLevel.Warning)
-        {
-            Console.WriteLine("Read scalers and units from the device.");
-        }
+        if (Trace > TraceLevel.Warning) Console.WriteLine("Read scalers and units from the device.");
         //Access services are available only for general protection.
         if ((Client.NegotiatedConformance & Conformance.Access) != 0 &&
             (Client.Ciphering.Security == Security.None ||
             (Client.NegotiatedConformance & Conformance.GeneralProtection) != 0))
         {
-            List<GXDLMSAccessItem> list = new List<GXDLMSAccessItem>();
+            var list = new List<GXDLMSAccessItem>();
             foreach (GXDLMSObject it in objs)
-            {
                 if ((it is GXDLMSRegister || it is GXDLMSExtendedRegister) && Client.CanRead(it, 3))
-                {
                     list.Add(new GXDLMSAccessItem(AccessServiceCommandType.Get, it, 3));
-                }
                 else if (it is GXDLMSDemandRegister && Client.CanRead(it, 4))
-                {
                     list.Add(new GXDLMSAccessItem(AccessServiceCommandType.Get, it, 4));
-                }
-            }
+
+            cancellationToken.ThrowIfCancellationRequested();
             ReadByAccess(list);
         }
         else if ((Client.NegotiatedConformance & Gurux.DLMS.Enums.Conformance.MultipleReferences) != 0)
         {
-            List<KeyValuePair<GXDLMSObject, int>> list = new List<KeyValuePair<GXDLMSObject, int>>();
+            var list = new List<KeyValuePair<GXDLMSObject, int>>();
             foreach (GXDLMSObject it in objs)
             {
                 if ((it is GXDLMSRegister || it is GXDLMSExtendedRegister) && Client.CanRead(it, 3))
-                {
                     list.Add(new KeyValuePair<GXDLMSObject, int>(it, 3));
-                }
                 if (it is GXDLMSDemandRegister && Client.CanRead(it, 4))
-                {
                     list.Add(new KeyValuePair<GXDLMSObject, int>(it, 4));
-                }
             }
             if (list.Count != 0)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
                     ReadList(list);
@@ -1061,6 +1058,7 @@ public class GXDLMSReader
             //Read values one by one.
             foreach (GXDLMSObject it in objs)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
                     if (it is GXDLMSRegister && Client.CanRead(it, 3))
@@ -1085,7 +1083,7 @@ public class GXDLMSReader
     /// <summary>
     /// Read profile generic columns.
     /// </summary>
-    public void GetProfileGenericColumns()
+    public void GetProfileGenericColumns(CancellationToken cancellationToken)
     {
         //Read Profile Generic columns first.
         foreach (GXDLMSObject it in Client.Objects.GetObjects(ObjectType.ProfileGeneric))
@@ -1097,12 +1095,13 @@ public class GXDLMSReader
                 {
                     Console.WriteLine(it.LogicalName);
                 }
+                cancellationToken.ThrowIfCancellationRequested();
                 Read(it, 3);
                 //If info.
                 if (Trace > TraceLevel.Warning)
                 {
-                    GXDLMSObject[] cols = (it as GXDLMSProfileGeneric).GetCaptureObject();
-                    StringBuilder sb = new StringBuilder();
+                    GXDLMSObject[] cols = (it as GXDLMSProfileGeneric)!.GetCaptureObject();
+                    StringBuilder sb = new();
                     bool First = true;
                     foreach (GXDLMSObject col in cols)
                     {
@@ -1112,7 +1111,7 @@ public class GXDLMSReader
                         }
                         First = false;
                         sb.Append(col.Name);
-                        sb.Append(" ");
+                        sb.Append(' ');
                         sb.Append(col.Description);
                     }
                     Console.WriteLine(sb.ToString());
@@ -1664,7 +1663,7 @@ public class GXDLMSReader
     {
         if (Client.CanRead(it, attributeIndex))
         {
-            GXReplyData reply = new GXReplyData();
+            GXReplyData reply = new();
             if (!ReadDataBlock(Client.Read(it, attributeIndex), reply))
             {
                 if (reply.Error != (short)ErrorCode.Rejected)

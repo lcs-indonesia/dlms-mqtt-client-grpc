@@ -60,7 +60,7 @@ public class DLMSClient : IDisposable, IDlmsClient
         ////////////////////////////////////////
         //Handle command line parameters.
         int ret = Settings.GetParameters(args, settings);
-        if (ret != 0) throw new ArgumentNullException("Argument can't be null.");
+        if (ret != 0) throw new ArgumentNullException($"{nameof(args)}", "Argument can't be null.");
         settings.client.OnPdu += (sender, data) =>
         {
             try
@@ -122,7 +122,7 @@ public class DLMSClient : IDisposable, IDlmsClient
 
         if (settings.media is GXNet net && settings.client.InterfaceType == InterfaceType.CoAP)
         {
-            //Update token ID.  
+            //Update token ID.
             settings.client.Coap.Token = 0x45;
             settings.client.Coap.Host = net.HostName;
             settings.client.Coap.MessageId = 1;
@@ -156,27 +156,33 @@ public class DLMSClient : IDisposable, IDlmsClient
         reader.Close();
         Console.WriteLine("DLMS Client disposed");
     }
-    public void SetDisconnectControl(bool value,DlmsReadObjectFilterDto filter,string? ln = null)
+    public void SetDisconnectControl(bool value, DlmsReadObjectFilterDto filter, string? ln = null, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(ln))ln = "0.0.96.3.10.255"; //default ln
-        var control = GetAndReadObject<GXDLMSDisconnectControl>(new(ln, 4), filter, ObjectType.DisconnectControl);
+        if (string.IsNullOrEmpty(ln)) ln = "0.0.96.3.10.255"; //default ln
+        var control = GetAndReadObject<GXDLMSDisconnectControl>(new(ln, 4), filter, ObjectType.DisconnectControl, cancellationToken);
         if (control is not GXDLMSDisconnectControl gxDC)
             throw new StatusCodeException(400, $"Invalid disconnect control logical name: {ln}");
         var packet = value ? gxDC.RemoteReconnect(settings.client) : gxDC.RemoteDisconnect(settings.client);
         var reply = new GXReplyData();
 
+        cancellationToken.ThrowIfCancellationRequested();
         var isRejected = reader.ReadDataBlock(packet, reply);
+
         if (isRejected) throw new StatusCodeException(400, "Disconnect control execution failed");
     }
-    public void ExecuteScript(string ln, int scriptId,DlmsReadObjectFilterDto filter)
+    public void ExecuteScript(string ln, int scriptId, DlmsReadObjectFilterDto filter, CancellationToken cancellationToken = default)
     {
-        var gxScript = GetAndReadObject<GXDLMSScriptTable>(new(ln, 2), filter, ObjectType.ScriptTable);
+        var gxScript = GetAndReadObject<GXDLMSScriptTable>(new(ln, 2), filter, ObjectType.ScriptTable, cancellationToken);
         var script = gxScript.Scripts.FirstOrDefault(p => p.Id == scriptId) ??
             throw new StatusCodeException(400, $"Script ID: {scriptId} not found");
         var packet = gxScript.Execute(settings.client, script);
         var reply = new GXReplyData();
 
-        foreach (var pack in packet) reader.ReadDLMSPacket(pack, reply);
+        foreach (var pack in packet)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            reader.ReadDLMSPacket(pack, reply);
+        }
     }
 
     public void ExportMeterCertificate()
@@ -196,16 +202,17 @@ public class DLMSClient : IDisposable, IDlmsClient
         }
 
     }
-    public IEnumerable<object> ReadObject(List<KeyValuePair<string, int>> readObjects, DlmsReadObjectFilterDto filter)
+    public IEnumerable<object> ReadObject(
+        List<KeyValuePair<string, int>> readObjects, DlmsReadObjectFilterDto filter, CancellationToken cancellationToken = default)
     {
-        InitializeConnection(filter.SkipGettingAssociationView);
+        InitializeConnection(filter.SkipGettingAssociationView, cancellationToken);
 
         //if (settings.readObjects.Count != 0)
         if (readObjects.Count != 0)
         {
             foreach (KeyValuePair<string, int> it in readObjects)
             {
-                var value = InternalReadObject(it, filter);
+                var value = InternalReadObject(it, filter, cancellationToken: cancellationToken);
                 if (value != null) yield return value;
             }
             if (settings.outputFile != null)
@@ -226,12 +233,13 @@ public class DLMSClient : IDisposable, IDlmsClient
     /// </summary>
     /// <param name="it"></param>
     /// <param name="filter"></param>
+    /// <param name="cancellationToken"></param>
     /// <returns>Value object</returns>
-    public object ReadObject(KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter)
+    public object ReadObject(KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter, CancellationToken cancellationToken = default)
     {
-        InitializeConnection(filter.SkipGettingAssociationView);
+        InitializeConnection(filter.SkipGettingAssociationView, cancellationToken);
 
-        var result = InternalReadObject(it, filter);
+        var result = InternalReadObject(it, filter, cancellationToken: cancellationToken);
         if (settings.outputFile != null)
         {
             try
@@ -254,15 +262,16 @@ public class DLMSClient : IDisposable, IDlmsClient
     /// <param name="objectType"></param>
     /// <returns>GXDLMSObject as T</returns>
     /// <exception cref="StatusCodeException"></exception>
-    public T GetAndReadObject<T>(KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter, ObjectType objectType)
+    public T GetAndReadObject<T>(
+        KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter, ObjectType objectType, CancellationToken cancellationToken = default)
         where T : GXDLMSObject
     {
-        InitializeConnection(filter.SkipGettingAssociationView);
+        InitializeConnection(filter.SkipGettingAssociationView, cancellationToken);
         var gxObject = settings.client.Objects.FindByLN(objectType, it.Key) ?? reader.GetObjectManually(it.Key);
         if (gxObject is not T gxTarget)
             throw new StatusCodeException(400, $"Invalid gx object type: {gxObject.ObjectType}");
 
-        var _ = InternalReadObject(it, filter, gxTarget);
+        var _ = InternalReadObject(it, filter, gxTarget, cancellationToken);
 
         if (settings.outputFile != null)
         {
@@ -278,9 +287,10 @@ public class DLMSClient : IDisposable, IDlmsClient
         return gxTarget;
     }
 
-    public ProfileGenericValuesDto ReadProfileGenericValue(KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter)
+    public ProfileGenericValuesDto ReadProfileGenericValue(
+        KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter, CancellationToken cancellationToken = default)
     {
-        InitializeConnection(false);
+        InitializeConnection(false, cancellationToken);
 
         var gxObject = settings.client.Objects.FindByLN(ObjectType.None, it.Key) ??
             new GXDLMSObject { LogicalName = it.Key };
@@ -288,6 +298,7 @@ public class DLMSClient : IDisposable, IDlmsClient
         if (gxObject is not GXDLMSProfileGeneric gxpg)
             throw new StatusCodeException(400, $"Invalid profile generic logical name: {it.Key}");
 
+        cancellationToken.ThrowIfCancellationRequested();
         reader.ReadProfileGeneric(gxpg, filter);
 
         var result = new ProfileGenericValuesDto();
@@ -368,17 +379,17 @@ public class DLMSClient : IDisposable, IDlmsClient
         else throw new StatusCodeException(500, "first index type should be a clock");
     }
 
-    private void InitializeConnection(bool skipGettingAssociationView)
+    private void InitializeConnection(bool skipGettingAssociationView, CancellationToken cancellationToken = default)
     {
         if (!isInitialized)
         {
-            reader.InitializeConnection();
+            reader.InitializeConnection(cancellationToken);
             isInitialized = true;
         }
-        if (!skipGettingAssociationView && !isAssociationViewReaded && reader.GetAssociationView(settings.outputFile))
+        if (!skipGettingAssociationView && !isAssociationViewReaded && reader.GetAssociationView(settings.outputFile, cancellationToken))
         {
-            reader.GetProfileGenericColumns();
-            reader.GetScalersAndUnits();
+            reader.GetProfileGenericColumns(cancellationToken);
+            reader.GetScalersAndUnits(cancellationToken);
             if (settings.outputFile != null)
             {
                 try
@@ -393,10 +404,12 @@ public class DLMSClient : IDisposable, IDlmsClient
             isAssociationViewReaded = true;
         }
     }
-    private object InternalReadObject(KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter, GXDLMSObject? gxObject = null)
+    private object InternalReadObject(
+        KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter, GXDLMSObject? gxObject = null, CancellationToken cancellationToken = default)
     {
         gxObject ??= settings.client.Objects.FindByLN(ObjectType.None, it.Key) ?? reader.GetObjectManually(it.Key);
 
+        cancellationToken.ThrowIfCancellationRequested();
         if (gxObject is GXDLMSProfileGeneric gxpg)
         {
             var gxValue = reader.GetProfileGenericValue(gxpg, it.Value, filter);

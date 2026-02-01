@@ -1,7 +1,10 @@
 ﻿using System.Text.Json;
 using DlmsMqttClientGrpc.Application.Interfaces;
+using DlmsMqttClientGrpc.Application.Services;
 using DlmsMqttClientGrpc.Application.Settings;
 using DlmsMqttClientGrpc.Infrastructure.Manager;
+using DlmsMqttClientGrpc.Infrastructure.Nats;
+using DlmsMqttClientGrpc.Infrastructure.Workers;
 using Microsoft.Extensions.Options;
 using MQTTnet;
 using MQTTnet.Client;
@@ -50,7 +53,8 @@ public static class ServiceExtensions
         };
         client.ConnectedAsync += e =>
         {
-            logger.LogInformation("MqttClient connected with config: {val}", JsonSerializer.Serialize(
+            logger.LogInformation("MqttClient connected.");
+            logger.LogDebug("Config: {val}", JsonSerializer.Serialize(
             mqttSettings, options: new()
             {
                 WriteIndented = true
@@ -77,13 +81,16 @@ public static class ServiceExtensions
     {
         services.AddSingleton(CreateMqttClient);
         services.AddSingleton<IDlmsClientManager, DlmsClientManager>();
+        services.AddSingleton<NatsListener>();
+        services.AddSingleton<NatsDlmsHandler>();
     }
 
     private static void Services(this IServiceCollection services)
     {
+        services.AddSingleton<DlmsService>();
     }
     private static void Workers(this IServiceCollection services)
     {
-
+        services.AddHostedService<NatsDlmsWorker>();
     }
 }
