@@ -3,8 +3,8 @@
     "label": "Debug .NET Core App",
     "adapter": "netcoredbg",
     "request": "launch",
-    "program": "${ZED_WORKTREE_ROOT}/DlmsMqttClientGrpc.Presentation/bin/Debug/net8.0/DlmsMqttClientGrpc.Presentation.dll",
-    "cwd": "${ZED_WORKTREE_ROOT}/DlmsMqttClientGrpc.Presentation",
+    "program": "${ZED_WORKTREE_ROOT}/DlmsMqttExecutor.Presentation/bin/Debug/net8.0/DlmsMqttExecutor.Presentation.dll",
+    "cwd": "${ZED_WORKTREE_ROOT}/DlmsMqttExecutor.Presentation",
     "env": {
       "ASPNETCORE_ENVIRONMENT": "Development",
       "ASPNETCORE_URLS": "http://localhost:5093",
@@ -13,7 +13,7 @@
       "command": "dotnet",
       "args": [
         "build",
-        "${ZED_WORKTREE_ROOT}/DlmsMqttClientGrpc.Presentation/DlmsMqttClientGrpc.Presentation.csproj",
+        "${ZED_WORKTREE_ROOT}/DlmsMqttExecutor.Presentation/DlmsMqttExecutor.Presentation.csproj",
         "-p:Configuration=Debug",
         "-p:TargetFramework=net8.0",
       ],

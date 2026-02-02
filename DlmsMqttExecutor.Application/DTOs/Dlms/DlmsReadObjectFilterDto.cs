@@ -1,0 +1,11 @@
+﻿namespace DlmsMqttExecutor.Application.DTOs.Dlms;
+
+public class DlmsReadObjectFilterDto
+{
+    public uint? Skip { get; set; }
+    public uint? Take { get; set; }
+    public DateTime? From { get; set; }
+    public DateTime? To { get; set; }
+    public bool SkipGettingAssociationView { get; set; } = false;
+
+}

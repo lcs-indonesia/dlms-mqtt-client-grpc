@@ -11,13 +11,13 @@ This project provides a gRPC interface to interact with DLMS-compliant smart met
 The project follows Clean Architecture principles with the following layers:
 
 ```
-DlmsMqttClientGrpc/
-├── DlmsMqttClientGrpc.Presentation   # gRPC service host, configuration
-├── DlmsMqttClientGrpc.Application    # Business logic, services, DTOs
-├── DlmsMqttClientGrpc.Domain         # Domain models
-├── DlmsMqttClientGrpc.Infrastructure # DLMS client, MQTT client implementations
-├── DlmsMqttClientGrpc.Protos         # Protocol buffer definitions
-└── DlmsMqttClientGrpc.Tests          # Unit tests
+DlmsMqttExecutor/
+├── DlmsMqttExecutor.Presentation   # gRPC service host, configuration
+├── DlmsMqttExecutor.Application    # Business logic, services, DTOs
+├── DlmsMqttExecutor.Domain         # Domain models
+├── DlmsMqttExecutor.Infrastructure # DLMS client, MQTT client implementations
+├── DlmsMqttExecutor.Protos         # Protocol buffer definitions
+└── DlmsMqttExecutor.Tests          # Unit tests
 ```
 
 ## Features
@@ -55,11 +55,11 @@ DlmsMqttClientGrpc/
 ### Running Locally
 
 1. Clone the repository
-2. Configure environment variables (copy `.env.example` to `.env` in `DlmsMqttClientGrpc.Presentation`)
+2. Configure environment variables (copy `.env.example` to `.env` in `DlmsMqttExecutor.Presentation`)
 3. Run the application:
 
 ```bash
-cd DlmsMqttClientGrpc.Presentation
+cd DlmsMqttExecutor.Presentation
 dotnet run
 ```
 
@@ -150,7 +150,7 @@ dotnet test
 ### Generating Proto Files
 
 Proto files are automatically generated during build. The definitions are located in:
-`DlmsMqttClientGrpc.Protos/Protos/dlms.proto`
+`DlmsMqttExecutor.Protos/Protos/dlms.proto`
 
 ## Dependencies
 

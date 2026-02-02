@@ -3,7 +3,7 @@ WORKDIR /src
 
 COPY . .
 
-RUN dotnet publish ./DlmsMqttClientGrpc.Presentation/DlmsMqttClientGrpc.Presentation.csproj \
+RUN dotnet publish ./DlmsMqttExecutor.Presentation/DlmsMqttExecutor.Presentation.csproj \
     -c Release -r linux-x64 --self-contained false \
     -p:PublishSingleFile=true -o /app/out
 
@@ -12,4 +12,4 @@ WORKDIR /app
 
 COPY --from=build /app/out ./
 
-ENTRYPOINT ["./DlmsMqttClientGrpc.Presentation"]
+ENTRYPOINT ["./DlmsMqttExecutor.Presentation"]

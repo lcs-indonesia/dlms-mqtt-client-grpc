@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option csharp_namespace = "DlmsMqttExecutor";
+
+package dlms;
+
+service DlmsProto{
+	rpc ConnectAndRead(ConnectAndReadRequest) returns (ConnectAndReadReply);
+	rpc ConnectAndReadProfileGeneric(ConnectAndReadRequest) returns (ProfileGenericReply);
+	rpc ExecuteScriptTable(ExecuteScriptTableRequest) returns (EmptyReply);
+	rpc SetDisconnectControl(SetDisconnectControlRequest) returns (EmptyReply);
+}
+
+message CustomReadArguments{
+	google.protobuf.BoolValue isClearCache = 1;
+	google.protobuf.UInt32Value skip = 2;
+	google.protobuf.UInt32Value take = 3;
+	google.protobuf.Timestamp from = 4;
+	google.protobuf.Timestamp to = 5;
+	google.protobuf.BoolValue SkipGettingAssociationView=6;
+}
+message ConnectAndReadRequest{
+	repeated string args = 1;
+	CustomReadArguments customArgs = 2;
+}
+
+message ExecuteScriptTableRequest{
+	repeated string args = 1;
+	string scriptLn = 2;
+	int32 scriptId = 3;
+	google.protobuf.BoolValue SkipGettingAssociationView=4;
+}
+
+message SetDisconnectControlRequest{
+	repeated string args = 1;
+	bool value = 2;
+	string scriptLn = 3;
+	google.protobuf.BoolValue SkipGettingAssociationView=4;
+}
+
+message ConnectAndReadReply{
+	google.protobuf.Struct value = 1;
+}
+
+message ProfileGenericReply{
+	repeated string number_schema = 1;
+	repeated string string_schema = 2;
+	repeated ProfileGenericRow rows = 3;
+}
+
+message ProfileGenericRow{
+	google.protobuf.Timestamp time = 1;
+	repeated double number_values = 2;
+	repeated string string_values = 3;
+}
+
+message EmptyReply{
+}

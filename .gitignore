@@ -416,6 +416,6 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
-/DlmsMqttClientGrpc.Presentation/trace.txt
+/DlmsMqttExecutor.Presentation/trace.txt
 
 Cache

@@ -1,0 +1,52 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DlmsMqttExecutor.Presentation", "DlmsMqttExecutor.Presentation\DlmsMqttExecutor.Presentation.csproj", "{8FFD21E8-0D9F-4B41-B2DC-426CB46215DF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DlmsMqttExecutor.Application", "DlmsMqttExecutor.Application\DlmsMqttExecutor.Application.csproj", "{D406C84B-8103-42B2-8CB5-B5CDBA97FA31}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DlmsMqttExecutor.Domain", "DlmsMqttExecutor.Domain\DlmsMqttExecutor.Domain.csproj", "{09E25940-9606-4536-B9DC-40512D9DE848}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DlmsMqttExecutor.Infrastructure", "DlmsMqttExecutor.Infrastructure\DlmsMqttExecutor.Infrastructure.csproj", "{90800422-2336-465C-8650-824BE84142C1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DlmsMqttExecutor.Tests", "DlmsMqttExecutor.Tests\DlmsMqttExecutor.Tests.csproj", "{3CA9CE59-B20B-4D90-B365-063C901C76A1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DlmsMqttExecutor.Protos", "DlmsMqttExecutor.Protos\DlmsMqttExecutor.Protos.csproj", "{3308A4F2-B510-480E-9BA0-BE8804D4DDB8}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8FFD21E8-0D9F-4B41-B2DC-426CB46215DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8FFD21E8-0D9F-4B41-B2DC-426CB46215DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8FFD21E8-0D9F-4B41-B2DC-426CB46215DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8FFD21E8-0D9F-4B41-B2DC-426CB46215DF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D406C84B-8103-42B2-8CB5-B5CDBA97FA31}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D406C84B-8103-42B2-8CB5-B5CDBA97FA31}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D406C84B-8103-42B2-8CB5-B5CDBA97FA31}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D406C84B-8103-42B2-8CB5-B5CDBA97FA31}.Release|Any CPU.Build.0 = Release|Any CPU
+		{09E25940-9606-4536-B9DC-40512D9DE848}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{09E25940-9606-4536-B9DC-40512D9DE848}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{09E25940-9606-4536-B9DC-40512D9DE848}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{09E25940-9606-4536-B9DC-40512D9DE848}.Release|Any CPU.Build.0 = Release|Any CPU
+		{90800422-2336-465C-8650-824BE84142C1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{90800422-2336-465C-8650-824BE84142C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{90800422-2336-465C-8650-824BE84142C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{90800422-2336-465C-8650-824BE84142C1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3CA9CE59-B20B-4D90-B365-063C901C76A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3CA9CE59-B20B-4D90-B365-063C901C76A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3CA9CE59-B20B-4D90-B365-063C901C76A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3CA9CE59-B20B-4D90-B365-063C901C76A1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3308A4F2-B510-480E-9BA0-BE8804D4DDB8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3308A4F2-B510-480E-9BA0-BE8804D4DDB8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3308A4F2-B510-480E-9BA0-BE8804D4DDB8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3308A4F2-B510-480E-9BA0-BE8804D4DDB8}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
