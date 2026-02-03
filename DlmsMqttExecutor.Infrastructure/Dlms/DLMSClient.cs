@@ -31,16 +31,11 @@
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
 //---------------------------------------------------------------------------
-using System.ComponentModel;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Text.Unicode;
 using DLMS.Client.GXMedia.Mqtt;
 using DlmsMqttExecutor.Application.DTOs.Dlms;
 using DlmsMqttExecutor.Application.Exceptions;
 using DlmsMqttExecutor.Application.Interfaces;
 using Gurux.DLMS;
-using Gurux.DLMS.Ecdsa;
 using Gurux.DLMS.Enums;
 using Gurux.DLMS.Objects;
 using Gurux.Net;
@@ -107,15 +102,7 @@ public class DLMSClient : IDisposable, IDlmsClient
             return null;
         };
 
-        try { settings.media.Open(); }
-        catch (System.IO.IOException ex)
-        {
-            Console.WriteLine("----------------------------------------------------------");
-            Console.WriteLine(ex.Message);
-            Console.WriteLine("Available ports:");
-            Console.WriteLine(string.Join(" ", GXSerial.GetPortNames()));
-            return;
-        }
+        settings.media.Open();
         //Some meters need a break here.
         Thread.Sleep(1000);
         Console.WriteLine("Connected:");

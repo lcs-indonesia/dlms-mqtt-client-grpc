@@ -698,7 +698,7 @@ public class GXDLMSReader
                 Media.Send(data, null);
                 if (!Media.Receive(p))
                 {
-                    throw new Exception(str);
+                    throw new TimeoutException(str);
                 }
             }
             //If echo is used.
@@ -723,7 +723,7 @@ public class GXDLMSReader
                     {
                         Console.WriteLine(data);
                     }
-                    throw new Exception(data);
+                    throw new TimeoutException(data);
                 }
             }
         }
@@ -1521,7 +1521,7 @@ public class GXDLMSReader
                 {
                     if (++pos >= RetryCount)
                     {
-                        throw new Exception("Failed to receive reply from the device in given time.");
+                        throw new TimeoutException("Failed to receive reply from the device in given time.");
                     }
                     //If Eop is not set read one byte at time.
                     if (p.Eop == null)
@@ -1571,7 +1571,7 @@ public class GXDLMSReader
                     {
                         if (++pos >= RetryCount)
                         {
-                            throw new Exception("Failed to receive reply from the device in given time.");
+                            throw new TimeoutException("Failed to receive reply from the device in given time.");
                         }
                         p.Reply = null;
                         Media.Send(data, null);
@@ -1934,7 +1934,12 @@ public class GXDLMSReader
             clock = obj;
             return true;
         }
-        catch { clock = null; return false; }
+        catch (TimeoutException) { throw; }
+        catch
+        {
+            clock = null;
+            return false;
+        }
     }
     /// <summary>
     /// Read attribute 3-8 of profile generic manually </br>
@@ -1957,6 +1962,7 @@ public class GXDLMSReader
             gxPg = obj;
             return true;
         }
+        catch (TimeoutException) { throw; }
         catch { gxPg = null; return false; }
     }
     /// <summary>
@@ -1977,6 +1983,7 @@ public class GXDLMSReader
             gxDc = obj;
             return true;
         }
+        catch (TimeoutException) { throw; }
         catch { gxDc = null; return false; }
     }
     /// <summary>
@@ -1996,6 +2003,7 @@ public class GXDLMSReader
             gxRegister = obj;
             return true;
         }
+        catch (TimeoutException) { throw; }
         catch { gxRegister = null; return false; }
     }
     /// <summary>
@@ -2014,6 +2022,7 @@ public class GXDLMSReader
             gxObj = script;
             return true;
         }
+        catch (TimeoutException) { throw; }
         catch { }
         try
         {
@@ -2022,6 +2031,7 @@ public class GXDLMSReader
             gxObj = data;
             return true;
         }
+        catch (TimeoutException) { throw; }
         catch { return false; }
     }
 }
