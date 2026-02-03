@@ -5,7 +5,7 @@ namespace DlmsMqttExecutor.Presentation.Extensions;
 
 public static class SettingsExtension
 {
-    public const string Prefix = "DLMS_MQTT_CLIENT_GRPC_";
+    public const string Prefix = "DLMS_MQTT_EXECUTOR_";
     public static void AddSettings(this IHostApplicationBuilder builder)
     {
         Env.Load();
