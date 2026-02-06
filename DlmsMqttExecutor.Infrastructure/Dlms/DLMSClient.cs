@@ -202,17 +202,17 @@ public class DLMSClient : IDisposable, IDlmsClient
                 var value = InternalReadObject(it, filter, cancellationToken: cancellationToken);
                 if (value != null) yield return value;
             }
-            if (settings.outputFile != null)
-            {
-                try
-                {
-                    settings.client.Objects.Save(settings.outputFile, new GXXmlWriterSettings() { UseMeterTime = true, IgnoreDefaultValues = false });
-                }
-                catch (Exception)
-                {
-                    //It's OK if this fails.
-                }
-            }
+            //if (settings.outputFile != null)
+            //{
+            //    try
+            //    {
+            //        settings.client.Objects.Save(settings.outputFile, new GXXmlWriterSettings() { UseMeterTime = true, IgnoreDefaultValues = false });
+            //    }
+            //    catch (Exception)
+            //    {
+            //        //It's OK if this fails.
+            //    }
+            //}
         }
     }
     /// <summary>
@@ -227,17 +227,17 @@ public class DLMSClient : IDisposable, IDlmsClient
         InitializeConnection(filter.SkipGettingAssociationView, cancellationToken);
 
         var result = InternalReadObject(it, filter, cancellationToken: cancellationToken);
-        if (settings.outputFile != null)
-        {
-            try
-            {
-                settings.client.Objects.Save(settings.outputFile, new GXXmlWriterSettings() { UseMeterTime = true, IgnoreDefaultValues = false });
-            }
-            catch (Exception)
-            {
-                //It's OK if this fails.
-            }
-        }
+        //if (settings.outputFile != null)
+        //{
+        //    try
+        //    {
+        //        settings.client.Objects.Save(settings.outputFile, new GXXmlWriterSettings() { UseMeterTime = true, IgnoreDefaultValues = false });
+        //    }
+        //    catch (Exception)
+        //    {
+        //        //It's OK if this fails.
+        //    }
+        //}
         return result;
     }
     /// <summary>
@@ -260,27 +260,27 @@ public class DLMSClient : IDisposable, IDlmsClient
 
         var _ = InternalReadObject(it, filter, gxTarget, cancellationToken);
 
-        if (settings.outputFile != null)
-        {
-            try
-            {
-                settings.client.Objects.Save(settings.outputFile, new GXXmlWriterSettings() { UseMeterTime = true, IgnoreDefaultValues = false });
-            }
-            catch (Exception)
-            {
-                //It's OK if this fails.
-            }
-        }
+        //if (settings.outputFile != null)
+        //{
+        //    try
+        //    {
+        //        settings.client.Objects.Save(settings.outputFile, new GXXmlWriterSettings() { UseMeterTime = true, IgnoreDefaultValues = false });
+        //    }
+        //    catch (Exception)
+        //    {
+        //        //It's OK if this fails.
+        //    }
+        //}
         return gxTarget;
     }
 
     public ProfileGenericValuesDto ReadProfileGenericValue(
         KeyValuePair<string, int> it, DlmsReadObjectFilterDto filter, CancellationToken cancellationToken = default)
     {
-        InitializeConnection(false, cancellationToken);
+        InitializeConnection(filter.SkipGettingAssociationView, cancellationToken);
 
         var gxObject = settings.client.Objects.FindByLN(ObjectType.None, it.Key) ??
-            new GXDLMSObject { LogicalName = it.Key };
+            GetAndReadObject<GXDLMSProfileGeneric>(it, filter, ObjectType.ProfileGeneric);
 
         if (gxObject is not GXDLMSProfileGeneric gxpg)
             throw new StatusCodeException(400, $"Invalid profile generic logical name: {it.Key}");
@@ -299,17 +299,17 @@ public class DLMSClient : IDisposable, IDlmsClient
             result.Rows.Add(row);
         }
 
-        if (settings.outputFile != null)
-        {
-            try
-            {
-                settings.client.Objects.Save(settings.outputFile, new GXXmlWriterSettings() { UseMeterTime = true, IgnoreDefaultValues = false });
-            }
-            catch (Exception)
-            {
-                //It's OK if this fails.
-            }
-        }
+        //if (settings.outputFile != null)
+        //{
+        //    try
+        //    {
+        //        settings.client.Objects.Save(settings.outputFile, new GXXmlWriterSettings() { UseMeterTime = true, IgnoreDefaultValues = false });
+        //    }
+        //    catch (Exception)
+        //    {
+        //        //It's OK if this fails.
+        //    }
+        //}
         return result;
     }
 
