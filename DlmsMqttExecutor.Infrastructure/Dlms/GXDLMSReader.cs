@@ -840,33 +840,33 @@ public class GXDLMSReader
             }
         }
         cancellationToken.ThrowIfCancellationRequested();
-        UpdateFrameCounter();
+        try { UpdateFrameCounter(); }
+        catch (Exception e) { throw new Exception("UpdateFrameCounter failed: " + e.Message, e); }
 
         cancellationToken.ThrowIfCancellationRequested();
-        InitializeOpticalHead();
+        try { InitializeOpticalHead(); }
+        catch (Exception e) { throw new Exception("InitializeOpticalHead failed: " + e.Message, e); }
 
         GXReplyData reply = new();
 
         cancellationToken.ThrowIfCancellationRequested();
-        SNRMRequest();
+        try { SNRMRequest(); }
+        catch (Exception e) { throw new Exception("SNRMRequest failed: " + e.Message, e); }
         if (!Client.PreEstablishedConnection)
         {
             //Generate AARQ request.
             //Split requests to multiple packets if needed.
             //If password is used all data might not fit to one packet.
-            foreach (byte[] it in Client.AARQRequest())
+            byte[][] arrqBuffer;
+            try { arrqBuffer = Client.AARQRequest(); }
+            catch (Exception e) { throw new Exception("AARQRequest failed: " + e.Message, e); }
+            foreach (byte[] it in arrqBuffer)
             {
-                if (Trace > TraceLevel.Info)
-                {
-                    Console.WriteLine("Send AARQ request", GXCommon.ToHex(it, true));
-                }
+                if (Trace > TraceLevel.Info) Console.WriteLine("Send AARQ request " + GXCommon.ToHex(it, true));
                 reply.Clear();
                 ReadDataBlock(it, reply);
             }
-            if (Trace > TraceLevel.Info)
-            {
-                Console.WriteLine("Parsing AARE reply" + reply.ToString());
-            }
+            if (Trace > TraceLevel.Info) Console.WriteLine("Parsing AARE reply" + reply.ToString());
             //Parse reply.
             Client.ParseAAREResponse(reply.Data);
             Console.WriteLine("Conformance: " + Client.NegotiatedConformance);
